@@ -5,8 +5,8 @@
 
 ## `forge create [project-name]`
 
-Scaffolds an offline Next.js TypeScript App Router project with `src/`, ESLint, and a professional
-starter page. pnpm is the default package manager; npm, Yarn, and Bun are supported.
+Scaffolds an offline Next.js, React/Vite, or Express TypeScript project. pnpm is the default package
+manager; npm, Yarn, and Bun are supported. Existing Next.js automation remains compatible.
 
 ```bash
 forge create
@@ -15,10 +15,16 @@ forge create my-app --interactive
 forge create my-app --framework nextjs --package-manager npm
 forge create my-app --no-git
 forge create my-app --docker --github-actions
+forge create my-app --preset nextjs-fullstack
+forge create frontend --framework react-vite --styling tailwind --testing vitest
+forge create api --framework express --database postgres --orm drizzle --testing vitest --docker
 ```
 
-Available flags are `--framework nextjs`, `--package-manager <pnpm|npm|yarn|bun>`, `--no-git`,
-`--docker`, `--no-docker`, `--github-actions`, `--no-github-actions`, and `--interactive`/`-i`.
+Stack flags are `--preset <id>`, `--framework <nextjs|react-vite|express>`,
+`--styling <plain-css|tailwind>`, `--database <postgres|sqlite>`,
+`--orm <prisma|drizzle>`, and `--testing <vitest|playwright>`. Common flags are
+`--package-manager <pnpm|npm|yarn|bun>`, `--no-git`, `--docker`, `--no-docker`,
+`--github-actions`, `--no-github-actions`, and `--interactive`/`-i`.
 It does not access the network, install dependencies, invoke `create-next-app`, or fabricate
 lockfiles.
 
@@ -28,8 +34,8 @@ provided on the command line are not prompted again, even when they equal a defa
 then prints a stable summary and requires confirmation. Declining confirmation exits successfully
 without creating files; Ctrl+C exits nonzero without starting scaffolding.
 
-Next.js is currently the only framework, so the wizard selects it without prompting. The package
-manager defaults to pnpm, Git defaults to enabled, and Docker and GitHub Actions default to disabled.
+The legacy wizard continues to select Next.js. The package manager defaults to pnpm, Git defaults to
+enabled, and Docker and GitHub Actions default to disabled.
 `forge create my-app` retains these defaults and never prompts, preserving compatibility for scripts.
 When stdin/stdout is not an interactive terminal, a command requiring prompts fails with guidance
 to provide a project name instead of waiting for input.
@@ -45,6 +51,17 @@ flat ESLint configuration, package metadata, `.gitignore`, and a project-specifi
 Project names must be safe single-directory names. Absolute paths, traversal, separators, control
 characters, reserved filesystem names, symbolic links, files, and non-empty destinations are
 rejected without modifying user content. Existing empty directories are supported.
+
+Explicit and preset stacks use the same registry, compatibility engine, and generation planner as
+ForgeKi Desktop. Unsupported IDs and combinations return actionable errors before filesystem mutation.
+Generation does not install packages, create lockfiles, download templates, or connect to databases.
+
+## `forge stacks`
+
+`forge stacks list` prints the six built-in presets. `forge stacks show <id>` prints a preset's
+framework, components, package manager, and tooling choices. The accepted IDs are
+`nextjs-starter`, `nextjs-fullstack`, `nextjs-dashboard`, `react-frontend`, `express-api`, and
+`express-postgres-api`; arbitrary packages and remote presets are never resolved.
 
 ## `forge check`
 
@@ -110,5 +127,4 @@ first successful creation.
   Yarn major version.
 - Bun workflows do not use the Node.js matrix because Bun is configured through its own runtime
   action.
-- Project creation currently supports only Next.js and does not install or validate generated
-  dependencies.
+- Stack creation does not install dependencies or execute generated projects.

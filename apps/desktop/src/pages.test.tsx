@@ -65,6 +65,8 @@ function bridge(): DesktopBridge {
   return {
     selectDestination: vi.fn().mockResolvedValue(scan.directory),
     createProject: vi.fn(),
+    planStack: vi.fn(),
+    createStack: vi.fn(),
     scanProject: vi.fn().mockResolvedValue(scan),
     inspectBuiltinPlugins: vi.fn().mockResolvedValue(plugins),
     applyBuiltinPlugin: vi.fn().mockResolvedValue({

@@ -34,6 +34,8 @@ function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
   return {
     selectDestination: vi.fn().mockResolvedValue('C:\\projects'),
     createProject: vi.fn().mockResolvedValue(result),
+    planStack: vi.fn(),
+    createStack: vi.fn().mockResolvedValue(result),
     scanProject: vi.fn().mockResolvedValue(scan),
     inspectBuiltinPlugins: vi.fn().mockResolvedValue([]),
     applyBuiltinPlugin: vi.fn(),
@@ -85,6 +87,14 @@ describe('desktop application shell', () => {
     templates.focus();
     await userEvent.keyboard('{Enter}');
     expect(templates).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('lazy-loads Stack Builder from persistent navigation', async () => {
+    render(<App bridge={bridge()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Stack Builder' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Stack Builder' }, { timeout: 10_000 }),
+    ).toBeVisible();
   });
 });
 

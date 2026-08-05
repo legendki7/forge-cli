@@ -24,6 +24,13 @@ narrow typed Rust commands and never exposes a general shell or filesystem API t
 - **`@forgecli7/plugin-github-actions`** generates deterministic, script-aware CI workflows from the
   shared project detection result. Bun rendering is isolated from Node package-manager rendering.
 
+The browser-safe `@forgecli7/core/stacks` entry owns the built-in stack registry, presets, and pure
+compatibility engine. `@forgecli7/templates/generation-plan` consumes that model and merges trusted
+framework/component contributions into a single owned-file plan. Commander, React, Tauri, and the
+filesystem are absent from compatibility calculation. Desktop preview and execution share the exact
+plan; the worker recomputes and byte-compares it before writing through the staging scaffolder. See
+[Visual Stack Builder](stack-builder.md).
+
 ## Extension model
 
 Commands are assembled in `createProgram`, making the program easy to test and embed. Services are

@@ -36,6 +36,20 @@ struct CreateRequest {
     add_docker: bool,
     #[serde(rename = "addGitHubActions")]
     add_github_actions: bool,
+    #[serde(default)]
+    stack: Option<Value>,
+    #[serde(default)]
+    generation_plan: Option<Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct StackPlanRequest {
+    project_name: String,
+    destination_directory: String,
+    stack: Value,
+    #[serde(default)]
+    template_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -64,6 +78,8 @@ struct CreateResult {
     package_manager: String,
     initialized_features: Vec<String>,
     warnings: Vec<String>,
+    #[serde(default)]
+    generation_plan: Option<Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -135,6 +151,24 @@ async fn create_project_inner(
     let created = canonical_directory(&result.project_directory)?;
     remember_allowed(state, created)?;
     Ok(result)
+}
+
+#[tauri::command]
+async fn plan_stack(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    request: StackPlanRequest,
+) -> Result<Value, String> {
+    validate_stack_plan_request(&request)?;
+    let parent = canonical_directory(&request.destination_directory)?;
+    ensure_allowed(&state, &parent)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "plan-stack",
+        serde_json::to_value(request).map_err(|_| "The stack request could not be encoded.")?,
+    )
+    .await
 }
 
 #[tauri::command]
@@ -372,13 +406,23 @@ fn validate_create_request(request: &CreateRequest) -> Result<(), String> {
     {
         return Err("The project name is invalid.".into());
     }
-    if request.framework != "nextjs" {
-        return Err("Only Next.js is supported.".into());
-    }
     if !matches!(
-        request.template_id.as_str(),
-        "nextjs-blank" | "nextjs-dashboard" | "nextjs-blog" | "nextjs-portfolio" | "nextjs-landing"
+        request.framework.as_str(),
+        "nextjs" | "react-vite" | "express"
     ) {
+        return Err("The selected built-in framework is invalid.".into());
+    }
+    if (request.framework == "nextjs"
+        && !matches!(
+            request.template_id.as_str(),
+            "nextjs-blank"
+                | "nextjs-dashboard"
+                | "nextjs-blog"
+                | "nextjs-portfolio"
+                | "nextjs-landing"
+        ))
+        || (request.framework != "nextjs" && request.template_id != request.framework)
+    {
         return Err("The selected built-in template is invalid.".into());
     }
     if !matches!(
@@ -390,6 +434,90 @@ fn validate_create_request(request: &CreateRequest) -> Result<(), String> {
     let parent = Path::new(&request.destination_directory);
     if !parent.is_absolute() || request.destination_directory.contains('\0') {
         return Err("A selected absolute destination is required.".into());
+    }
+    if let Some(stack) = &request.stack {
+        validate_stack_value(stack, &request.framework)?;
+    } else if request.framework != "nextjs" {
+        return Err("React/Vite and Express creation require a validated stack.".into());
+    }
+    if request.generation_plan.is_some() && request.stack.is_none() {
+        return Err("A generation plan requires a validated stack.".into());
+    }
+    Ok(())
+}
+
+fn validate_stack_plan_request(request: &StackPlanRequest) -> Result<(), String> {
+    if request.project_name.trim().is_empty()
+        || request
+            .project_name
+            .chars()
+            .any(|character| matches!(character, '/' | '\\' | '\0'))
+    {
+        return Err("The project name is invalid.".into());
+    }
+    let framework = request
+        .stack
+        .get("framework")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "The stack framework is invalid.".to_string())?;
+    validate_stack_value(&request.stack, framework)?;
+    let parent = Path::new(&request.destination_directory);
+    if !parent.is_absolute() || request.destination_directory.contains('\0') {
+        return Err("A selected absolute destination is required.".into());
+    }
+    Ok(())
+}
+
+fn validate_stack_value(stack: &Value, framework: &str) -> Result<(), String> {
+    const COMPONENTS: &[&str] = &[
+        "nextjs",
+        "react-vite",
+        "express",
+        "typescript",
+        "plain-css",
+        "tailwind",
+        "postgres",
+        "sqlite",
+        "prisma",
+        "drizzle",
+        "vitest",
+        "playwright",
+        "git",
+        "docker",
+        "github-actions",
+        "node",
+    ];
+    let object = stack
+        .as_object()
+        .ok_or_else(|| "The stack definition is invalid.".to_string())?;
+    if object.keys().any(|key| {
+        !matches!(
+            key.as_str(),
+            "framework"
+                | "components"
+                | "packageManager"
+                | "initializeGit"
+                | "addDocker"
+                | "addGitHubActions"
+                | "templateId"
+        )
+    }) || object.get("framework").and_then(Value::as_str) != Some(framework)
+        || !matches!(framework, "nextjs" | "react-vite" | "express")
+    {
+        return Err("The stack definition is invalid.".into());
+    }
+    let components = object
+        .get("components")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "The stack components are invalid.".to_string())?;
+    if components.len() > 30
+        || components.iter().any(|component| {
+            component
+                .as_str()
+                .is_none_or(|id| !COMPONENTS.contains(&id))
+        })
+    {
+        return Err("Only trusted built-in stack components are allowed.".into());
     }
     Ok(())
 }
@@ -477,9 +605,14 @@ fn validate_persisted_state(state: &Value) -> Result<(), String> {
     if object.keys().any(|key| {
         !matches!(
             key.as_str(),
-            "schemaVersion" | "preferences" | "recentProjects" | "activity"
+            "schemaVersion"
+                | "preferences"
+                | "recentProjects"
+                | "activity"
+                | "customStackPresets"
+                | "lastStack"
         )
-    }) || object.get("schemaVersion").and_then(Value::as_u64) != Some(1)
+    }) || object.get("schemaVersion").and_then(Value::as_u64) != Some(2)
     {
         return Err("ForgeKi preferences use an unsupported schema.".into());
     }
@@ -576,6 +709,8 @@ mod tests {
             initialize_git: false,
             add_docker: false,
             add_github_actions: false,
+            stack: None,
+            generation_plan: None,
         };
         assert!(validate_create_request(&request).is_err());
     }
@@ -583,7 +718,7 @@ mod tests {
     #[test]
     fn persistence_rejects_sensitive_keys() {
         let value = serde_json::json!({
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "preferences": { "token": "not-allowed" },
             "recentProjects": [],
             "activity": []
@@ -602,6 +737,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             select_destination,
             create_project,
+            plan_stack,
             scan_project,
             inspect_builtin_plugins,
             apply_builtin_plugin,

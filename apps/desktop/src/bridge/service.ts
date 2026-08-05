@@ -1,12 +1,26 @@
 import path from 'node:path';
-import { detectProject, validateProjectName, type SupportedPackageManager } from '@forgecli7/core';
+import {
+  detectProject,
+  isStackComponentId,
+  isStackFramework,
+  validateProjectName,
+  validateStack,
+  type StackDefinition,
+  type SupportedPackageManager,
+} from '@forgecli7/core';
 import {
   applyBuiltinPlugin,
   inspectBuiltinPlugins,
   isBuiltinPluginId,
   loadPlugins,
 } from '@forgecli7/plugins';
-import { createProject, CreateProjectError, isTemplateId } from '@forgecli7/templates';
+import {
+  createGenerationPlan,
+  createProject,
+  CreateProjectError,
+  isTemplateId,
+  type ProjectGenerationPlan,
+} from '@forgecli7/templates';
 import { checkDeveloperTools } from './developer-tools.js';
 import type {
   DesktopCreateRequest,
@@ -19,7 +33,7 @@ import type {
 
 export interface WorkerEnvelope {
   operationId: string;
-  operation?: 'create' | 'scan' | 'inspect-plugins' | 'apply-plugin' | 'check-tools';
+  operation?: 'create' | 'plan-stack' | 'scan' | 'inspect-plugins' | 'apply-plugin' | 'check-tools';
   request: unknown;
 }
 
@@ -38,6 +52,8 @@ const requestKeys = new Set([
   'initializeGit',
   'addDocker',
   'addGitHubActions',
+  'stack',
+  'generationPlan',
 ]);
 
 export async function handleWorkerEnvelope(
@@ -60,14 +76,34 @@ export async function handleWorkerEnvelope(
 
   try {
     const request = validateRequest(envelope.request);
+    const generationPlan = request.stack
+      ? await createGenerationPlan(request.stack, {
+          projectName: request.projectName,
+          destinationDirectory: request.destinationDirectory,
+          templateId: request.templateId,
+        })
+      : undefined;
+    if (
+      request.generationPlan &&
+      JSON.stringify(request.generationPlan) !== JSON.stringify(generationPlan)
+    ) {
+      throw new CreateProjectError(
+        'SCAFFOLD_FAILED',
+        'The reviewed generation plan no longer matches the trusted stack plan.',
+      );
+    }
     progress('validate', 'running', 'Checking project configuration');
     progress('validate', 'succeeded', 'Project configuration is valid');
     progress('prepare', 'running', 'Checking the selected destination');
-    progress('scaffold', 'running', 'Writing the Next.js project safely');
+    progress('scaffold', 'running', `Writing the ${request.framework} project safely`);
 
-    const result = await createProject({ ...request, plugins: loadPlugins().list() });
+    const result = await createProject({
+      ...request,
+      ...(generationPlan ? { generationPlan } : {}),
+      plugins: loadPlugins().list(),
+    });
     progress('prepare', 'succeeded', 'Destination passed safety checks');
-    progress('scaffold', 'succeeded', 'Next.js project files were created');
+    progress('scaffold', 'succeeded', `${request.framework} project files were created`);
     if (request.initializeGit) {
       progress('git', 'running', 'Checking Git initialization');
       progress(
@@ -86,10 +122,10 @@ export async function handleWorkerEnvelope(
     } else progress('github-actions', 'skipped', 'GitHub Actions was not requested');
     progress('finish', 'running', 'Verifying the generated project');
     const detection = await detectProject(result.projectDirectory);
-    if (detection.framework !== 'nextjs') {
+    if (detection.framework !== request.framework) {
       throw new CreateProjectError(
         'SCAFFOLD_FAILED',
-        'The generated Next.js project could not be verified.',
+        'The generated project framework could not be verified.',
       );
     }
     progress('finish', 'succeeded', 'Project creation finished');
@@ -98,7 +134,7 @@ export async function handleWorkerEnvelope(
       payload: {
         projectName: request.projectName,
         projectDirectory: result.projectDirectory,
-        framework: 'nextjs',
+        framework: request.framework,
         templateId: request.templateId,
         packageManager: request.packageManager,
         initializedFeatures: [
@@ -107,6 +143,7 @@ export async function handleWorkerEnvelope(
           ...(result.appliedPlugins.includes('github-actions') ? ['GitHub Actions'] : []),
         ],
         warnings: result.warnings,
+        ...(generationPlan ? { generationPlan } : {}),
       },
     });
   } catch (error) {
@@ -136,10 +173,16 @@ export function validateRequest(value: unknown): DesktopCreateRequest {
       'A selected absolute destination is required.',
     );
   }
-  if (input.framework !== 'nextjs')
-    throw new CreateProjectError('UNSUPPORTED_FRAMEWORK', 'Only Next.js is supported.');
-  const templateId = input.templateId ?? 'nextjs-blank';
-  if (!isTemplateId(templateId)) invalidPayload();
+  if (!isStackFramework(input.framework))
+    throw new CreateProjectError('UNSUPPORTED_FRAMEWORK', 'Unsupported built-in framework.');
+  const templateId =
+    input.templateId ?? (input.framework === 'nextjs' ? 'nextjs-blank' : input.framework);
+  if (
+    typeof templateId !== 'string' ||
+    (input.framework === 'nextjs' && !isTemplateId(templateId)) ||
+    (input.framework !== 'nextjs' && templateId !== input.framework)
+  )
+    invalidPayload();
   if (!isPackageManager(input.packageManager)) invalidPayload();
   const initializeGit = readBoolean(input, 'initializeGit');
   const addDocker = readBoolean(input, 'addDocker');
@@ -147,12 +190,16 @@ export function validateRequest(value: unknown): DesktopCreateRequest {
   return {
     projectName,
     destinationDirectory: input.destinationDirectory,
-    framework: 'nextjs',
-    templateId,
+    framework: input.framework,
+    templateId: templateId as DesktopCreateRequest['templateId'],
     packageManager: input.packageManager,
     initializeGit,
     addDocker,
     addGitHubActions,
+    ...(input.stack === undefined ? {} : { stack: readStackDefinition(input.stack) }),
+    ...(input.generationPlan === undefined
+      ? {}
+      : { generationPlan: input.generationPlan as ProjectGenerationPlan }),
   };
 }
 
@@ -215,7 +262,10 @@ async function handleOperation(
 ): Promise<void> {
   try {
     let result: unknown;
-    if (operation === 'scan') {
+    if (operation === 'plan-stack') {
+      const input = readStackPlanRequest(request);
+      result = await createGenerationPlan(input.stack, input);
+    } else if (operation === 'scan') {
       result = await scanProjectDirectory(readDirectoryRequest(request));
     } else if (operation === 'inspect-plugins') {
       const directory = readOptionalDirectoryRequest(request);
@@ -235,6 +285,57 @@ async function handleOperation(
   } catch (error) {
     send({ type: 'error', payload: publicError(error) });
   }
+}
+
+function readStackPlanRequest(value: unknown): {
+  projectName: string;
+  destinationDirectory: string;
+  templateId?: string;
+  stack: StackDefinition;
+} {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some(
+      (key) =>
+        key !== 'projectName' &&
+        key !== 'destinationDirectory' &&
+        key !== 'templateId' &&
+        key !== 'stack',
+    )
+  )
+    invalidPayload();
+  const projectName = typeof value.projectName === 'string' ? value.projectName.trim() : '';
+  if (!validateProjectName(projectName).valid) invalidPayload();
+  return {
+    projectName,
+    destinationDirectory: validateAbsoluteDirectory(value.destinationDirectory),
+    ...(typeof value.templateId === 'string' ? { templateId: value.templateId } : {}),
+    stack: readStackDefinition(value.stack),
+  };
+}
+
+function readStackDefinition(value: unknown): StackDefinition {
+  if (!isRecord(value) || !isStackFramework(value.framework) || !Array.isArray(value.components))
+    invalidPayload();
+  if (!value.components.every(isStackComponentId)) invalidPayload();
+  if (!isPackageManager(value.packageManager)) invalidPayload();
+  if (
+    typeof value.initializeGit !== 'boolean' ||
+    typeof value.addDocker !== 'boolean' ||
+    typeof value.addGitHubActions !== 'boolean'
+  )
+    invalidPayload();
+  const definition: StackDefinition = {
+    framework: value.framework,
+    components: value.components,
+    packageManager: value.packageManager,
+    initializeGit: value.initializeGit,
+    addDocker: value.addDocker,
+    addGitHubActions: value.addGitHubActions,
+    ...(typeof value.templateId === 'string' ? { templateId: value.templateId } : {}),
+  };
+  if (!validateStack(definition).valid) invalidPayload();
+  return definition;
 }
 
 function readDirectoryRequest(value: unknown): string {

@@ -66,7 +66,12 @@ function renderedHelp(command: Command): string {
 describe('ForgeKi program', () => {
   it('registers the initial commands', () => {
     const program = createProgram({ cwd: '/workspace', write: () => undefined });
-    expect(program.commands.map((command) => command.name())).toEqual(['create', 'add', 'check']);
+    expect(program.commands.map((command) => command.name())).toEqual([
+      'create',
+      'add',
+      'check',
+      'stacks',
+    ]);
   });
 
   it('provides accurate, example-driven help for every command', () => {
@@ -343,5 +348,71 @@ describe('ForgeKi program', () => {
       readFile(path.join(cwd, '.github', 'workflows', 'ci.yml'), 'utf8'),
     ).resolves.toContain('pnpm run build');
     expect(output[0]).toContain('GitHub Actions workflow created');
+  });
+
+  it('lists and shows trusted built-in stack presets', async () => {
+    const output: string[] = [];
+    const program = createProgram({ cwd: '/workspace', write: (message) => output.push(message) });
+    await program.parseAsync(['stacks', 'list'], { from: 'user' });
+    await program.parseAsync(['stacks', 'show', 'nextjs-fullstack'], { from: 'user' });
+    expect(output[0]).toContain('nextjs-fullstack');
+    expect(output[1]).toContain('Next.js Full Stack');
+    expect(output[1]).toContain('Prisma');
+  });
+
+  it('creates from a built-in preset without breaking non-interactive automation', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'forge-stack-preset-'));
+    temporaryDirectories.push(cwd);
+    await createProgram({ cwd, write: () => undefined }).parseAsync(
+      ['create', 'fullstack', '--preset', 'nextjs-fullstack', '--no-git'],
+      { from: 'user' },
+    );
+    await expect(
+      readFile(path.join(cwd, 'fullstack', 'prisma', 'schema.prisma'), 'utf8'),
+    ).resolves.toContain('provider = "postgresql"');
+    await expect(readFile(path.join(cwd, 'fullstack', 'Dockerfile'), 'utf8')).resolves.toContain(
+      'node:20-alpine',
+    );
+  });
+
+  it('creates an explicit Express SQLite and Drizzle stack', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'forge-stack-express-'));
+    temporaryDirectories.push(cwd);
+    await createProgram({ cwd, write: () => undefined }).parseAsync(
+      [
+        'create',
+        'api',
+        '--framework',
+        'express',
+        '--database',
+        'sqlite',
+        '--orm',
+        'drizzle',
+        '--testing',
+        'vitest',
+        '--no-git',
+      ],
+      { from: 'user' },
+    );
+    await expect(
+      readFile(path.join(cwd, 'api', 'src', 'routes', 'health.ts'), 'utf8'),
+    ).resolves.toContain("status: 'ok'");
+    await expect(readFile(path.join(cwd, 'api', 'drizzle.config.ts'), 'utf8')).resolves.toContain(
+      "dialect: 'sqlite'",
+    );
+  });
+
+  it('rejects incompatible explicit stacks with readable guidance', async () => {
+    const output: string[] = [];
+    let exitCode = 0;
+    await createProgram({
+      cwd: '/workspace',
+      write: (message) => output.push(message),
+      setExitCode: (value) => (exitCode = value),
+    }).parseAsync(['create', 'bad', '--framework', 'react-vite', '--database', 'postgres'], {
+      from: 'user',
+    });
+    expect(exitCode).toBe(1);
+    expect(output[0]).toContain('cannot directly configure a server database');
   });
 });

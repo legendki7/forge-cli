@@ -43,6 +43,7 @@ if (!config.app?.security?.csp) failures.push('the desktop content security poli
 for (const command of [
   'select_destination',
   'create_project',
+  'plan_stack',
   'scan_project',
   'inspect_builtin_plugins',
   'apply_builtin_plugin',

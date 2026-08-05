@@ -150,4 +150,55 @@ describe('desktop worker security boundary', () => {
       payload: { code: 'UNEXPECTED_ERROR' },
     });
   });
+
+  it('plans and creates only backend-validated built-in stacks', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'forgeki-stack-worker-'));
+    temporaryDirectories.push(root);
+    const stack = {
+      framework: 'express',
+      components: ['typescript', 'sqlite', 'drizzle', 'vitest'],
+      packageManager: 'pnpm',
+      initializeGit: false,
+      addDocker: false,
+      addGitHubActions: false,
+    } as const;
+    const planned: WorkerMessage[] = [];
+    await handleWorkerEnvelope(
+      {
+        operationId: 'plan-stack',
+        operation: 'plan-stack',
+        request: {
+          projectName: 'api',
+          destinationDirectory: root,
+          stack,
+        },
+      },
+      (message) => planned.push(message),
+    );
+    expect(planned.at(-1)).toMatchObject({
+      type: 'operation-result',
+      payload: { framework: 'express' },
+    });
+    const plan =
+      planned.at(-1)?.type === 'operation-result'
+        ? (planned.at(-1)!.payload as { files: Array<{ path: string }> })
+        : undefined;
+    expect(plan?.files.map(({ path: filePath }) => filePath)).toContain('drizzle.config.ts');
+  });
+
+  it('rejects unknown component IDs and forged generation plans', () => {
+    expect(() =>
+      validateRequest({
+        ...request('C:\\projects'),
+        stack: {
+          framework: 'nextjs',
+          components: ['remote-package'],
+          packageManager: 'pnpm',
+          initializeGit: false,
+          addDocker: false,
+          addGitHubActions: false,
+        },
+      }),
+    ).toThrow('Invalid desktop bridge payload');
+  });
 });

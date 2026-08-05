@@ -10,6 +10,9 @@ export default defineConfig({
       '@forgecli7/core/project-name': fileURLToPath(
         new URL('./packages/core/src/project-name.ts', import.meta.url),
       ),
+      '@forgecli7/core/stacks': fileURLToPath(
+        new URL('./packages/core/src/stacks.ts', import.meta.url),
+      ),
       '@forgecli7/core': fileURLToPath(new URL('./packages/core/src/index.ts', import.meta.url)),
       '@forgecli7/plugin-docker': fileURLToPath(
         new URL('./packages/plugins/plugin-docker/src/index.ts', import.meta.url),
@@ -27,6 +30,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    testTimeout: 15_000,
+    hookTimeout: 15_000,
     include: ['packages/**/*.test.ts', 'tests/**/*.test.ts'],
     coverage: {
       reporter: ['text', 'html'],

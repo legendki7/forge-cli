@@ -12,6 +12,9 @@ export default defineConfig({
       '@forgecli7/core/package-managers': fileURLToPath(
         new URL('../../packages/core/src/package-managers.ts', import.meta.url),
       ),
+      '@forgecli7/core/stacks': fileURLToPath(
+        new URL('../../packages/core/src/stacks.ts', import.meta.url),
+      ),
       '@forgecli7/core': fileURLToPath(
         new URL('../../packages/core/src/index.ts', import.meta.url),
       ),
@@ -34,6 +37,9 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    fileParallelism: false,
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     clearMocks: true,

@@ -2,8 +2,13 @@ import path from 'node:path';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 import {
+  getStackPreset,
+  isStackFramework,
   packageManagerCommand,
+  validateStack,
   validateProjectName,
+  type StackComponentId,
+  type StackDefinition,
   type SupportedPackageManager,
 } from '@forgecli7/core';
 import type { PluginRegistry } from '@forgecli7/plugins';
@@ -23,6 +28,11 @@ interface CreateCommandOptions {
   docker?: boolean;
   githubActions?: boolean;
   interactive?: boolean;
+  preset?: string;
+  styling?: string;
+  database?: string;
+  orm?: string;
+  testing?: string;
 }
 
 export interface CreateCommandDependencies {
@@ -39,7 +49,7 @@ export function registerCreateCommand(
 ): void {
   program
     .command('create [project-name]')
-    .description('Scaffold a Next.js TypeScript project')
+    .description('Scaffold a supported TypeScript project')
     .option('-i, --interactive', 'prompt for project configuration')
     .option('--framework <framework>', 'project framework', 'nextjs')
     .option('--package-manager <manager>', 'pnpm, npm, yarn, or bun', 'pnpm')
@@ -48,6 +58,11 @@ export function registerCreateCommand(
     .option('--no-docker', 'skip Docker configuration')
     .option('--github-actions', 'add a GitHub Actions CI workflow')
     .option('--no-github-actions', 'skip GitHub Actions CI')
+    .option('--preset <preset>', 'trusted built-in stack preset')
+    .option('--styling <styling>', 'plain-css or tailwind')
+    .option('--database <database>', 'postgres, sqlite, or none')
+    .option('--orm <orm>', 'prisma, drizzle, or none')
+    .option('--testing <tools>', 'comma-separated vitest and playwright')
     .addHelpText(
       'after',
       [
@@ -59,13 +74,15 @@ export function registerCreateCommand(
         '  forge create',
         '  forge create my-app --no-git',
         '  forge create my-app --package-manager npm --docker',
+        '  forge create web --preset nextjs-fullstack',
+        '  forge create api --framework express --database postgres --orm drizzle --testing vitest',
       ].join('\n'),
     )
     .action(
       async (projectName: string | undefined, options: CreateCommandOptions, command: Command) => {
         try {
-          if (options.framework !== 'nextjs')
-            throw new Error('Only --framework nextjs is supported.');
+          if (!isStackFramework(options.framework))
+            throw new Error('Use --framework nextjs, react-vite, or express.');
           if (projectName) assertValidProjectName(projectName);
 
           const interactive = !projectName || options.interactive === true;
@@ -74,14 +91,28 @@ export function registerCreateCommand(
             : resolveNonInteractively(projectName, options);
           if (!configuration) return;
 
+          const stack = resolveStackDefinition(options, configuration.packageManager);
+
           const result = await createProject({
             projectName: configuration.projectName,
             destinationDirectory: context.cwd,
-            framework: 'nextjs',
+            framework: stack?.framework ?? 'nextjs',
             packageManager: configuration.packageManager,
             initializeGit: configuration.initializeGit,
             addDocker: configuration.addDocker,
             addGitHubActions: configuration.addGitHubActions,
+            ...(stack
+              ? {
+                  stack,
+                  ...(stack.templateId?.startsWith('nextjs-')
+                    ? {
+                        templateId: stack.templateId as Parameters<
+                          typeof createProject
+                        >[0]['templateId'],
+                      }
+                    : {}),
+                }
+              : {}),
             plugins: plugins.list(),
             processExecutor: dependencies.processExecutor,
           });
@@ -155,6 +186,89 @@ function resolveNonInteractively(
   };
 }
 
+function resolveStackDefinition(
+  options: CreateCommandOptions,
+  packageManager: SupportedPackageManager,
+): StackDefinition | undefined {
+  const stackRequested = Boolean(
+    options.preset ||
+    options.framework !== 'nextjs' ||
+    options.styling ||
+    options.database ||
+    options.orm ||
+    options.testing,
+  );
+  if (!stackRequested) return undefined;
+  const source = options.preset ? getStackPreset(options.preset) : undefined;
+  if (options.preset && !source)
+    throw new Error(`Unknown built-in stack preset "${options.preset}".`);
+  const framework = source?.definition.framework ?? options.framework;
+  if (!isStackFramework(framework)) throw new Error(`Unsupported framework "${framework}".`);
+  const components = new Set<StackComponentId>(source?.definition.components ?? []);
+  if (!source) components.add('typescript');
+  replaceCategory(components, ['plain-css', 'tailwind'], options.styling, 'styling');
+  replaceCategory(components, ['postgres', 'sqlite'], options.database, 'database');
+  replaceCategory(components, ['prisma', 'drizzle'], options.orm, 'ORM');
+  if (options.testing) {
+    components.delete('vitest');
+    components.delete('playwright');
+    for (const id of options.testing.split(',').map((value) => value.trim())) {
+      if (id !== 'vitest' && id !== 'playwright')
+        throw new Error(`Unsupported testing component "${id}".`);
+      components.add(id);
+    }
+  }
+  setBooleanComponent(components, 'git', options.git);
+  setBooleanComponent(
+    components,
+    'docker',
+    options.docker ?? source?.definition.addDocker ?? false,
+  );
+  setBooleanComponent(
+    components,
+    'github-actions',
+    options.githubActions ?? source?.definition.addGitHubActions ?? false,
+  );
+  const definition: StackDefinition = {
+    framework,
+    components: [...components],
+    packageManager,
+    initializeGit: options.git,
+    addDocker: components.has('docker'),
+    addGitHubActions: components.has('github-actions'),
+    ...(source?.definition.templateId ? { templateId: source.definition.templateId } : {}),
+  };
+  const validation = validateStack(definition);
+  if (!validation.valid)
+    throw new Error(
+      validation.errors.map(({ message, resolution }) => `${message} ${resolution}`).join(' '),
+    );
+  return definition;
+}
+
+function replaceCategory(
+  components: Set<StackComponentId>,
+  values: readonly StackComponentId[],
+  selected: string | undefined,
+  label: string,
+) {
+  if (!selected) return;
+  values.forEach((value) => components.delete(value));
+  if (selected === 'none') return;
+  if (!values.includes(selected as StackComponentId))
+    throw new Error(`Unsupported ${label} component "${selected}".`);
+  components.add(selected as StackComponentId);
+}
+
+function setBooleanComponent(
+  components: Set<StackComponentId>,
+  id: StackComponentId,
+  enabled: boolean,
+) {
+  if (enabled) components.add(id);
+  else components.delete(id);
+}
+
 function assertValidProjectName(projectName: string): void {
   const validation = validateProjectName(projectName);
   if (!validation.valid) throw new Error(validation.message ?? 'Invalid project name.');
@@ -168,7 +282,7 @@ function writeSuccess(
   const { packageManager } = configuration;
   const steps = [
     chalk.green('✓ Validated project name'),
-    chalk.green('✓ Generated Next.js project'),
+    chalk.green(`✓ Generated ${result.framework} project`),
     chalk.green(`✓ Configured ${packageManager}`),
   ];
   if (configuration.initializeGit) {

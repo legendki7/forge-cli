@@ -8,7 +8,9 @@ import type {
   PersistedDesktopState,
   PluginApplyResponse,
   ProgressEvent,
+  StackPlanRequest,
 } from '../types';
+import type { ProjectGenerationPlan } from '@forgecli7/templates';
 import type { BuiltinPluginCatalogEntry } from '@forgecli7/plugins';
 
 export const tauriBridge: DesktopBridge = {
@@ -17,6 +19,21 @@ export const tauriBridge: DesktopBridge = {
   },
 
   async createProject(request, onProgress) {
+    const unlisten = await listen<ProgressEvent>('forgeki://creation-progress', ({ payload }) => {
+      onProgress(payload);
+    });
+    try {
+      return await invoke<DesktopCreateResult>('create_project', { request });
+    } finally {
+      unlisten();
+    }
+  },
+
+  planStack(request: StackPlanRequest) {
+    return invoke<ProjectGenerationPlan>('plan_stack', { request });
+  },
+
+  async createStack(request, onProgress) {
     const unlisten = await listen<ProgressEvent>('forgeki://creation-progress', ({ payload }) => {
       onProgress(payload);
     });

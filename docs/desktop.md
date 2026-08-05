@@ -207,16 +207,17 @@ to the injectable `git init` call already used by the CLI.
 
 ### Native commands and boundaries
 
-| Command                                     | Boundary                                                                           |
-| ------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `select_destination`                        | Native folder picker; canonical result is added to the capability list.            |
-| `create_project`                            | Typed request, five-template allowlist, shared sidecar scaffold, single operation. |
-| `scan_project`                              | Exact canonical directory previously selected by the user.                         |
-| `inspect_builtin_plugins`                   | Metadata only, or detection for an exact selected project.                         |
-| `apply_builtin_plugin`                      | Docker/GitHub Actions allowlist and exact selected project only.                   |
-| `check_developer_tools`                     | Fixed backend tool definitions; no frontend executable or arguments.               |
-| `load_desktop_state` / `save_desktop_state` | Bounded schema in Tauri app data only.                                             |
-| `open_project_folder` / `copy_project_path` | Exact selected or newly created project only.                                      |
+| Command                                     | Boundary                                                                            |
+| ------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `select_destination`                        | Native folder picker; canonical result is added to the capability list.             |
+| `plan_stack`                                | Selected destination plus built-in component IDs; returns a read-only trusted plan. |
+| `create_project`                            | Typed template/stack allowlist, reviewed-plan verification, single operation.       |
+| `scan_project`                              | Exact canonical directory previously selected by the user.                          |
+| `inspect_builtin_plugins`                   | Metadata only, or detection for an exact selected project.                          |
+| `apply_builtin_plugin`                      | Docker/GitHub Actions allowlist and exact selected project only.                    |
+| `check_developer_tools`                     | Fixed backend tool definitions; no frontend executable or arguments.                |
+| `load_desktop_state` / `save_desktop_state` | Bounded schema in Tauri app data only.                                              |
+| `open_project_folder` / `copy_project_path` | Exact selected or newly created project only.                                       |
 
 No command accepts a raw shell string, arbitrary plugin package, unrestricted filesystem path, or
 frontend-defined executable.
@@ -242,13 +243,15 @@ directories, bundles, and installers are ignored by Git.
 
 ## Current limitations and roadmap
 
-Only Next.js TypeScript App Router projects and the two trusted built-in plugins are supported.
-There is no plugin removal, dependency installation, deployment, security-vulnerability scanner,
-remote template fetch, account, automatic update, or community execution path. Planned future work:
+The Visual Stack Builder supports trusted Next.js, React/Vite, and Express foundations. There is no
+plugin removal, dependency installation, deployment, security-vulnerability scanner, remote template
+fetch, account, automatic update, or community execution path. Planned future work:
 
 - Community plugin marketplace
-- Visual stack builder
-- Additional frameworks
+- Additional databases
+- Authentication components
+- UI component libraries
+- Visual multi-service architecture
 - macOS native validation
 - Linux native validation
 - Signed Windows installers

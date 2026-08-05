@@ -153,4 +153,71 @@ describe('detectProject', () => {
     expect(result.packageManager).toBe('npm');
     expect(result.warnings.some((warning) => warning.includes('declares bun'))).toBe(true);
   });
+
+  it('reports framework, ORM, styling, and testing evidence for a generated Vite stack', async () => {
+    const directory = await fixture({
+      'package.json': packageJson({
+        dependencies: { react: '^19', vite: '^7', tailwindcss: '^4' },
+        devDependencies: { typescript: '^5', vitest: '^3', '@playwright/test': '^1' },
+      }),
+      'tsconfig.json': '{}',
+      'vite.config.ts': 'export default {}',
+      'vitest.config.ts': 'export default {}',
+      'playwright.config.ts': 'export default {}',
+    });
+    const result = await detectProject(directory);
+    expect(result.stackComponents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'react-vite', state: 'detected' }),
+        expect.objectContaining({ id: 'tailwind', state: 'likely-detected' }),
+        expect.objectContaining({ id: 'vitest', state: 'detected' }),
+        expect.objectContaining({ id: 'playwright', state: 'detected' }),
+      ]),
+    );
+  });
+
+  it('detects Express database tooling and marks conflicting database evidence', async () => {
+    const directory = await fixture({
+      'package.json': packageJson({
+        dependencies: {
+          express: '^5',
+          pg: '^8',
+          'better-sqlite3': '^12',
+          'drizzle-orm': '^0.44',
+        },
+        devDependencies: { typescript: '^5', 'drizzle-kit': '^0.31', vitest: '^3' },
+      }),
+      'tsconfig.json': '{}',
+      'drizzle.config.ts': 'export default {}',
+      'src/db/schema.ts': 'export {};',
+      'vitest.config.ts': 'export default {}',
+    });
+    const result = await detectProject(directory);
+    expect(result.stackComponents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'express', state: 'detected' }),
+        expect.objectContaining({ id: 'drizzle', state: 'detected' }),
+        expect.objectContaining({ id: 'postgres', state: 'conflicting' }),
+        expect.objectContaining({ id: 'sqlite', state: 'conflicting' }),
+      ]),
+    );
+  });
+
+  it('recognizes PostgreSQL from trusted ORM configuration without claiming package certainty', async () => {
+    const directory = await fixture({
+      'package.json': packageJson({
+        dependencies: { next: '^15', react: '^19', '@prisma/client': '^6' },
+        devDependencies: { prisma: '^6', typescript: '^5' },
+      }),
+      'tsconfig.json': '{}',
+      'prisma/schema.prisma': 'datasource db { provider = "postgresql" url = env("DATABASE_URL") }',
+      '.env.example': 'DATABASE_URL=postgres://forgeki:forgeki@localhost:5432/forgeki\n',
+    });
+    expect((await detectProject(directory)).stackComponents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'prisma', state: 'detected' }),
+        expect.objectContaining({ id: 'postgres', state: 'likely-detected' }),
+      ]),
+    );
+  });
 });

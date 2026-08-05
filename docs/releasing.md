@@ -17,6 +17,8 @@ workflow publishes automatically. The first public release must use the npm dist
 - [ ] `pnpm release:inspect` passes and its tarball file lists are reviewed
 - [ ] `pnpm release:smoke` passes outside the monorepo
 - [ ] `pnpm release:verify` completes with a ready status
+- [ ] Stack compatibility, generation-plan, CLI stack, scanner, and Desktop Stack Builder tests pass
+- [ ] Offline smoke generation covers Next.js full stack, React/Vite, and Express without installs
 - [ ] Required JavaScript, declarations, package metadata, README, LICENSE, and shebang are present
 - [ ] Source tests, coverage, caches, Changesets, and monorepo configuration are absent from tarballs
 
@@ -71,6 +73,9 @@ Dashboard-template creation, project scanning, built-in plugin application, allo
 tool checks, activity persistence, and settings persistence after restart. Use pnpm with Git disabled
 and Docker plus GitHub Actions enabled for the native creation smoke test. Delete the generated test
 project afterward. Installer output remains unsigned and private; do not create a GitHub release.
+For Stack Builder changes, verify that the reviewed plan exactly matches execution, scan the generated
+projects back into the detected graph, and remove every temporary project before staging. Do not run
+Docker, start a database, install Playwright browsers, or put environment values in release evidence.
 
 ### Partial publication recovery
 

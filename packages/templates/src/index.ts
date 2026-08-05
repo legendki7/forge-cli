@@ -25,3 +25,15 @@ export {
   type TemplateOptions,
   type TemplateValidationResult,
 } from './catalog.js';
+export {
+  createGenerationPlan,
+  executeGenerationPlan,
+  validateExecutablePlan,
+  GenerationPlanError,
+  type PlannedDependency,
+  type PlannedFile,
+  type PlannedPlugin,
+  type ProjectCreationInput,
+  type ProjectGenerationPlan,
+  type ProjectGenerationResult,
+} from './generation-plan.js';

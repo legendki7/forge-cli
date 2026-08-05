@@ -380,6 +380,27 @@ function ScanDetails({
           <Item label="Docker" value={pluginStatus(scan, 'docker')} />
           <Item label="GitHub Actions" value={pluginStatus(scan, 'github-actions')} />
         </dl>
+        <section className="detected-stack" aria-label="Detected stack graph">
+          <h3>Detected stack</h3>
+          {(scan.stackComponents ?? []).length ? (
+            <div className="architecture-branches">
+              {(scan.stackComponents ?? []).map((component) => (
+                <div key={component.id} className="detected-node">
+                  <strong>{component.id}</strong>
+                  <span
+                    className="status-badge"
+                    data-result={component.state === 'conflicting' ? 'warning' : 'success'}
+                  >
+                    {component.state.replace('-', ' ')}
+                  </span>
+                  <small>{component.evidence.join(', ')}</small>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No supported stack components were detected with enough evidence.</p>
+          )}
+        </section>
         <details>
           <summary>Detailed project metadata</summary>
           <h3>Scripts</h3>
@@ -834,6 +855,64 @@ export function SettingsPage({
           </label>
         </section>
         <section className="panel">
+          <h2>Stack Builder defaults</h2>
+          <label className="field">
+            <span>Default framework</span>
+            <select
+              aria-label="Default framework"
+              value={preferences.defaultFramework}
+              onChange={(event) =>
+                update(
+                  'defaultFramework',
+                  event.target.value as DesktopPreferences['defaultFramework'],
+                )
+              }
+            >
+              <option value="nextjs">Next.js</option>
+              <option value="react-vite">React + Vite</option>
+              <option value="express">Express</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Default styling</span>
+            <select
+              aria-label="Default styling"
+              value={preferences.defaultStyling}
+              onChange={(event) =>
+                update('defaultStyling', event.target.value as DesktopPreferences['defaultStyling'])
+              }
+            >
+              <option value="plain-css">Plain CSS</option>
+              <option value="tailwind">Tailwind CSS</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Default testing</span>
+            <select
+              aria-label="Default testing"
+              value={preferences.defaultTesting}
+              onChange={(event) =>
+                update('defaultTesting', event.target.value as DesktopPreferences['defaultTesting'])
+              }
+            >
+              <option value="none">None</option>
+              <option value="vitest">Vitest</option>
+              <option value="playwright">Playwright</option>
+            </select>
+          </label>
+          <OptionRow
+            label="Remember last stack"
+            checked={preferences.rememberLastStack}
+            onChange={(value) => update('rememberLastStack', value)}
+          />
+          <OptionRow
+            label="Confirm required components"
+            checked={preferences.confirmRequiredComponents}
+            onChange={(value) => update('confirmRequiredComponents', value)}
+          />
+          <small>Databases and ORMs are never selected automatically.</small>
+        </section>
+        <section className="panel">
           <h2>Application</h2>
           <dl className="detail-grid">
             <Item label="Version" value="0.1.0" />
@@ -959,6 +1038,11 @@ function activityLabel(type: ActivityType) {
       'folder-opened': 'Project folder opened',
       'creation-failed': 'Creation failed',
       'plugin-warning': 'Plugin warning',
+      'stack-configured': 'Stack configured',
+      'preset-loaded': 'Preset loaded',
+      'preset-saved': 'Custom preset saved',
+      'stack-generated': 'Project generated from stack',
+      'stack-validation-failed': 'Stack validation failed',
     } as const
   )[type];
 }

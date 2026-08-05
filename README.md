@@ -22,8 +22,9 @@ and production readiness or cross-platform support is not yet claimed.
 - Source repository: **https://github.com/legendki7/forge-cli**
 
 > **Beta status:** ForgeKi is preparing for its first public prerelease. APIs and generated output
-> may change before a stable release. It currently scaffolds Next.js TypeScript projects and provides
-> project detection, Docker configuration, and GitHub Actions CI generation.
+> may change before a stable release. It scaffolds deterministic Next.js, React/Vite, and Express
+> TypeScript projects and provides visual stack planning, project detection, Docker configuration,
+> and GitHub Actions CI generation.
 
 ## Highlights
 
@@ -38,6 +39,8 @@ and production readiness or cross-platform support is not yet claimed.
 - Changesets-ready release workflow and GitHub Actions CI
 - Five deterministic, offline Next.js templates shared by CLI and Desktop
 - Local project scanning, rule-based recommendations, developer-tool checks, and activity history
+- Offline Visual Stack Builder with shared compatibility rules, architecture review, and file preview
+- Deterministic React/Vite and Express generation with optional Tailwind, database, ORM, and tests
 
 ## Requirements
 
@@ -75,6 +78,8 @@ During development, run the CLI directly from TypeScript:
 pnpm dev -- create my-app --no-git
 pnpm dev -- add docker
 pnpm dev -- check
+pnpm dev -- stacks list
+pnpm dev -- create api --framework express --database sqlite --orm drizzle --testing vitest
 ```
 
 Run `forge add docker` from a Node.js project to create a starter `Dockerfile` and `.dockerignore`.
@@ -84,7 +89,9 @@ Existing files are always preserved, so the command is safe to run repeatedly.
 
 | Command                    | Responsibility                                                 |
 | -------------------------- | -------------------------------------------------------------- |
-| `forge create [name]`      | Interactively or non-interactively scaffold a Next.js project  |
+| `forge create [name]`      | Scaffold a trusted framework, preset, or explicit stack        |
+| `forge stacks list`        | List deterministic built-in stack presets                      |
+| `forge stacks show <id>`   | Inspect a built-in preset and its resolved components          |
 | `forge add docker`         | Add non-destructive Docker configuration                       |
 | `forge add github-actions` | Add non-destructive, script-aware GitHub Actions CI            |
 | `forge add`                | List the currently available plugins                           |
@@ -113,10 +120,13 @@ contracts without importing the CLI, and `@forgecli7/plugins` loads built-ins in
 CLI resolves plugins through that registry, so future implementations can be added without changing
 command parsing.
 
+The [Visual Stack Builder guide](docs/stack-builder.md) documents the supported components,
+compatibility rules, presets, shared generation plan, scanner evidence, CLI usage, and security model.
+
 ## ForgeKi Desktop
 
 ForgeKi Desktop opens on a persistent local application shell with Home, Create Project, Templates,
-Scan Project, Plugins, Developer Tools, Activity, and Settings pages. Its five-step creation wizard
+Stack Builder, Scan Project, Plugins, Developer Tools, Activity, and Settings pages. Its creation wizard
 uses the same project-name validation, scaffolder, detection engine, and trusted built-in plugins as
 the CLI. It never installs project dependencies.
 

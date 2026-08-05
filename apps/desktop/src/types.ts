@@ -1,10 +1,25 @@
-import type { Framework, ProjectLanguage, SupportedPackageManager } from '@forgecli7/core';
+import type {
+  DetectedStackComponent,
+  Framework,
+  ProjectLanguage,
+  StackDefinition,
+  StackFramework,
+  SupportedPackageManager,
+} from '@forgecli7/core';
 import type { BuiltinPluginCatalogEntry, BuiltinPluginId } from '@forgecli7/plugins';
-import type { TemplateId } from '@forgecli7/templates';
+import type { ProjectGenerationPlan, TemplateId } from '@forgecli7/templates';
 
 export type PackageManager = SupportedPackageManager;
 export type NavigationPage =
-  'home' | 'create' | 'templates' | 'scan' | 'plugins' | 'tools' | 'activity' | 'settings';
+  | 'home'
+  | 'create'
+  | 'templates'
+  | 'stack-builder'
+  | 'scan'
+  | 'plugins'
+  | 'tools'
+  | 'activity'
+  | 'settings';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type UserMode = 'beginner' | 'advanced';
 
@@ -18,6 +33,11 @@ export interface DesktopPreferences {
   addGitHubActions: boolean;
   mode: UserMode;
   dismissedRecommendations: string[];
+  defaultFramework: StackFramework;
+  defaultStyling: 'plain-css' | 'tailwind';
+  defaultTesting: 'none' | 'vitest' | 'playwright';
+  rememberLastStack: boolean;
+  confirmRequiredComponents: boolean;
 }
 
 export type ActivityType =
@@ -27,7 +47,12 @@ export type ActivityType =
   | 'github-actions-added'
   | 'folder-opened'
   | 'creation-failed'
-  | 'plugin-warning';
+  | 'plugin-warning'
+  | 'stack-configured'
+  | 'preset-loaded'
+  | 'preset-saved'
+  | 'stack-generated'
+  | 'stack-validation-failed';
 export type ActivityResult = 'success' | 'warning' | 'failed';
 
 export interface ActivityEntry {
@@ -50,21 +75,35 @@ export interface RecentProject {
 }
 
 export interface PersistedDesktopState {
-  schemaVersion: 1;
+  schemaVersion: 2;
   preferences: DesktopPreferences;
   recentProjects: RecentProject[];
   activity: ActivityEntry[];
+  customStackPresets: CustomStackPreset[];
+  lastStack?: StackDefinition;
+}
+
+export interface CustomStackPreset {
+  schemaVersion: 1;
+  id: string;
+  name: string;
+  description: string;
+  definition: StackDefinition;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DesktopCreateRequest {
   projectName: string;
   destinationDirectory: string;
-  framework: 'nextjs';
-  templateId: TemplateId;
+  framework: StackFramework;
+  templateId: TemplateId | StackFramework;
   packageManager: PackageManager;
   initializeGit: boolean;
   addDocker: boolean;
   addGitHubActions: boolean;
+  stack?: StackDefinition;
+  generationPlan?: ProjectGenerationPlan;
 }
 
 export type ProgressStepId =
@@ -81,11 +120,12 @@ export interface ProgressEvent {
 export interface DesktopCreateResult {
   projectName: string;
   projectDirectory: string;
-  framework: 'nextjs';
-  templateId: TemplateId;
+  framework: StackFramework;
+  templateId: string;
   packageManager: PackageManager;
   initializedFeatures: string[];
   warnings: string[];
+  generationPlan?: ProjectGenerationPlan;
 }
 
 export interface ProjectRecommendation {
@@ -108,6 +148,7 @@ export interface DesktopProjectScan {
   warnings: string[];
   plugins: BuiltinPluginCatalogEntry[];
   recommendations: ProjectRecommendation[];
+  stackComponents?: DetectedStackComponent[];
 }
 
 export type DeveloperToolId =
@@ -148,6 +189,11 @@ export interface DesktopBridge {
     request: DesktopCreateRequest,
     onProgress: (event: ProgressEvent) => void,
   ): Promise<DesktopCreateResult>;
+  planStack(request: StackPlanRequest): Promise<ProjectGenerationPlan>;
+  createStack(
+    request: DesktopCreateRequest,
+    onProgress: (event: ProgressEvent) => void,
+  ): Promise<DesktopCreateResult>;
   scanProject(path: string): Promise<DesktopProjectScan>;
   inspectBuiltinPlugins(path?: string): Promise<BuiltinPluginCatalogEntry[]>;
   applyBuiltinPlugin(request: PluginApplyRequest): Promise<PluginApplyResponse>;
@@ -156,4 +202,11 @@ export interface DesktopBridge {
   saveDesktopState(state: PersistedDesktopState): Promise<void>;
   openProjectFolder(path: string): Promise<void>;
   copyProjectPath(path: string): Promise<void>;
+}
+
+export interface StackPlanRequest {
+  projectName: string;
+  destinationDirectory: string;
+  stack: StackDefinition;
+  templateId?: string;
 }

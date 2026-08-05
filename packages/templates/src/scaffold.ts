@@ -16,9 +16,16 @@ import {
   createFileSafely,
   validateProjectName,
   type ForgePlugin,
+  type StackDefinition,
+  type StackFramework,
   type SupportedPackageManager,
 } from '@forgecli7/core';
 import { isTemplateId, renderBuiltinTemplate, type TemplateId } from './catalog.js';
+import {
+  createGenerationPlan,
+  validateExecutablePlan,
+  type ProjectGenerationPlan,
+} from './generation-plan.js';
 
 export interface ProcessResult {
   exitCode: number;
@@ -32,12 +39,14 @@ export interface ProcessExecutor {
 export interface CreateProjectOptions {
   projectName: string;
   destinationDirectory: string;
-  framework: 'nextjs';
+  framework: StackFramework;
   packageManager: SupportedPackageManager;
   initializeGit: boolean;
   addDocker: boolean;
   addGitHubActions: boolean;
-  templateId?: TemplateId;
+  templateId?: TemplateId | StackFramework;
+  stack?: StackDefinition;
+  generationPlan?: ProjectGenerationPlan;
   plugins?: readonly ForgePlugin[];
   processExecutor?: ProcessExecutor;
 }
@@ -48,6 +57,8 @@ export interface CreateProjectResult {
   appliedPlugins: string[];
   warnings: string[];
   gitInitialized: boolean;
+  framework: StackFramework;
+  generationPlan?: ProjectGenerationPlan;
 }
 
 export type CreateProjectErrorCode =
@@ -86,10 +97,10 @@ export async function createProject(options: CreateProjectOptions): Promise<Crea
       validation.message ?? 'Invalid project name.',
     );
   }
-  if (options.framework !== 'nextjs') {
+  if (!['nextjs', 'react-vite', 'express'].includes(options.framework)) {
     throw new CreateProjectError(
       'UNSUPPORTED_FRAMEWORK',
-      'Only the nextjs framework is supported.',
+      'Only nextjs, react-vite, and express frameworks are supported.',
     );
   }
 
@@ -109,17 +120,39 @@ export async function createProject(options: CreateProjectOptions): Promise<Crea
 
   const destinationState = await inspectDestination(destination);
   const templateId = options.templateId ?? 'nextjs-blank';
-  if (!isTemplateId(templateId)) {
+  if (options.framework === 'nextjs' && !isTemplateId(templateId)) {
     throw new CreateProjectError('UNSUPPORTED_FRAMEWORK', 'The selected template is unsupported.');
   }
-  const templateFiles = (
-    await renderBuiltinTemplate(templateId, {
-      projectName: options.projectName,
-      packageManager: options.packageManager,
-    })
-  ).files;
+  const generationPlan = options.stack
+    ? (options.generationPlan ??
+      (await createGenerationPlan(options.stack, {
+        projectName: options.projectName,
+        destinationDirectory: options.destinationDirectory,
+        ...(options.templateId ? { templateId: options.templateId } : {}),
+      })))
+    : undefined;
+  if (generationPlan) {
+    validateExecutablePlan(generationPlan);
+    if (
+      generationPlan.projectName !== options.projectName ||
+      generationPlan.framework !== options.framework
+    ) {
+      throw new CreateProjectError(
+        'SCAFFOLD_FAILED',
+        'The generation plan does not match the requested project.',
+      );
+    }
+  }
+  const templateFiles = generationPlan
+    ? generationPlan.files
+    : (
+        await renderBuiltinTemplate(templateId as TemplateId, {
+          projectName: options.projectName,
+          packageManager: options.packageManager,
+        })
+      ).files;
   const warnings: string[] = [];
-  const appliedPlugins: string[] = [];
+  const appliedPlugins: string[] = generationPlan ? generationPlan.plugins.map(({ id }) => id) : [];
   let gitInitialized = false;
 
   if (!destinationState.exists) {
@@ -128,7 +161,8 @@ export async function createProject(options: CreateProjectOptions): Promise<Crea
       const createdFiles = await writeTemplate(staging, templateFiles);
       const git = await initializeGit(staging, options, warnings);
       gitInitialized = git;
-      await applyRequestedPlugins(staging, options, createdFiles, appliedPlugins, warnings);
+      if (!generationPlan)
+        await applyRequestedPlugins(staging, options, createdFiles, appliedPlugins, warnings);
       await finalizeStaging(staging, destination, options.projectName);
       return {
         projectDirectory: destination,
@@ -136,6 +170,8 @@ export async function createProject(options: CreateProjectOptions): Promise<Crea
         appliedPlugins,
         warnings,
         gitInitialized,
+        framework: options.framework,
+        ...(generationPlan ? { generationPlan } : {}),
       };
     } catch (error) {
       await rm(staging, { recursive: true, force: true });
@@ -161,8 +197,17 @@ export async function createProject(options: CreateProjectOptions): Promise<Crea
     await unlink(lockPath).catch(() => undefined);
   }
   gitInitialized = await initializeGit(destination, options, warnings);
-  await applyRequestedPlugins(destination, options, createdFiles, appliedPlugins, warnings);
-  return { projectDirectory: destination, createdFiles, appliedPlugins, warnings, gitInitialized };
+  if (!generationPlan)
+    await applyRequestedPlugins(destination, options, createdFiles, appliedPlugins, warnings);
+  return {
+    projectDirectory: destination,
+    createdFiles,
+    appliedPlugins,
+    warnings,
+    gitInitialized,
+    framework: options.framework,
+    ...(generationPlan ? { generationPlan } : {}),
+  };
 }
 
 async function finalizeStaging(

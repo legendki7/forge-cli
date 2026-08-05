@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_ACTIVITY_ENTRIES,
+  MAX_CUSTOM_STACK_PRESETS,
   MAX_RECENT_PROJECTS,
   addActivity,
   addRecentProject,
@@ -67,5 +68,67 @@ describe('desktop persistence', () => {
     const state = createDefaultDesktopState();
     await adapter.save(state);
     expect(migrateDesktopState(await adapter.load())).toEqual(state);
+  });
+
+  it('restores valid custom presets and the last stack through schema migration', () => {
+    const definition = {
+      framework: 'express',
+      components: ['typescript', 'vitest', 'node'],
+      packageManager: 'pnpm',
+      initializeGit: false,
+      addDocker: false,
+      addGitHubActions: false,
+    };
+    const migrated = migrateDesktopState({
+      schemaVersion: 1,
+      customStackPresets: [
+        {
+          schemaVersion: 1,
+          id: 'local-api',
+          name: 'Local API',
+          description: 'Offline Express preset',
+          definition,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      lastStack: definition,
+    });
+    expect(migrated.schemaVersion).toBe(2);
+    expect(migrated.customStackPresets[0]?.name).toBe('Local API');
+    expect(migrated.lastStack?.framework).toBe('express');
+  });
+
+  it('rejects tampered presets, redacts secrets, and bounds the custom preset collection', () => {
+    const preset = (index: number) => ({
+      schemaVersion: 1,
+      id: `preset-${index}`,
+      name: `Preset ${index} npm_${'a'.repeat(26)}`,
+      description: `Safe description npm_${'b'.repeat(26)}`,
+      definition: {
+        framework: 'nextjs',
+        components: ['typescript', 'plain-css', 'node'],
+        packageManager: 'pnpm',
+        initializeGit: false,
+        addDocker: false,
+        addGitHubActions: false,
+      },
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    const migrated = migrateDesktopState({
+      customStackPresets: [
+        {
+          ...preset(-1),
+          definition: { ...preset(-1).definition, components: ['typescript', '@evil/package'] },
+        },
+        ...Array.from({ length: MAX_CUSTOM_STACK_PRESETS + 5 }, (_, index) => preset(index)),
+      ],
+      apiToken: 'must-not-survive',
+    });
+    expect(migrated.customStackPresets).toHaveLength(MAX_CUSTOM_STACK_PRESETS);
+    expect(migrated.customStackPresets.some(({ id }) => id === 'preset--1')).toBe(false);
+    expect(JSON.stringify(migrated)).not.toContain('must-not-survive');
+    expect(JSON.stringify(migrated)).not.toContain(`npm_${'a'.repeat(26)}`);
   });
 });

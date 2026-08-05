@@ -61,6 +61,8 @@ export {
   type PackageManager,
   type ProjectDetectionResult,
   type ProjectLanguage,
+  type DetectedStackComponent,
+  type StackDetectionState,
 } from './project-detection.js';
 export { createFileSafely } from './file-safety.js';
 export {
@@ -69,3 +71,24 @@ export {
   type SupportedPackageManager,
 } from './package-managers.js';
 export { validateProjectName, type ProjectNameValidationResult } from './project-name.js';
+export {
+  BUILTIN_STACK_COMPONENTS,
+  BUILTIN_STACK_PRESETS,
+  getStackComponent,
+  getStackPreset,
+  isStackComponentId,
+  isStackFramework,
+  validateStack,
+  type DependencyDefinition,
+  type EnvironmentVariableDefinition,
+  type GeneratedFileDefinition,
+  type StackComponent,
+  type StackComponentCategory,
+  type StackComponentId,
+  type StackConflict,
+  type StackDefinition,
+  type StackFramework,
+  type StackIssue,
+  type StackPreset,
+  type StackValidationResult,
+} from './stacks.js';

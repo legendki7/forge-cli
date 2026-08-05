@@ -3,10 +3,18 @@ import type {
   DesktopPreferences,
   PersistedDesktopState,
   RecentProject,
+  CustomStackPreset,
 } from './types';
+import {
+  isStackComponentId,
+  isStackFramework,
+  validateStack,
+  type StackDefinition,
+} from '@forgecli7/core/stacks';
 
 export const MAX_RECENT_PROJECTS = 25;
 export const MAX_ACTIVITY_ENTRIES = 200;
+export const MAX_CUSTOM_STACK_PRESETS = 50;
 
 export const defaultPreferences: DesktopPreferences = {
   theme: 'system',
@@ -18,14 +26,20 @@ export const defaultPreferences: DesktopPreferences = {
   addGitHubActions: false,
   mode: 'beginner',
   dismissedRecommendations: [],
+  defaultFramework: 'nextjs',
+  defaultStyling: 'plain-css',
+  defaultTesting: 'vitest',
+  rememberLastStack: true,
+  confirmRequiredComponents: true,
 };
 
 export function createDefaultDesktopState(): PersistedDesktopState {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     preferences: { ...defaultPreferences },
     recentProjects: [],
     activity: [],
+    customStackPresets: [],
   };
 }
 
@@ -34,8 +48,10 @@ export function migrateDesktopState(value: unknown): PersistedDesktopState {
   const preferences = isRecord(value.preferences) ? value.preferences : {};
   const recent = Array.isArray(value.recentProjects) ? value.recentProjects : [];
   const activity = Array.isArray(value.activity) ? value.activity : [];
+  const presets = Array.isArray(value.customStackPresets) ? value.customStackPresets : [];
+  const lastStack = readStackDefinition(value.lastStack);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     preferences: {
       theme: oneOf(preferences.theme, ['system', 'light', 'dark'], 'system'),
       sidebarCollapsed: boolean(preferences.sidebarCollapsed, false),
@@ -55,9 +71,23 @@ export function migrateDesktopState(value: unknown): PersistedDesktopState {
             .filter(Boolean)
             .slice(0, 100)
         : [],
+      defaultFramework: oneOf(
+        preferences.defaultFramework,
+        ['nextjs', 'react-vite', 'express'],
+        'nextjs',
+      ),
+      defaultStyling: oneOf(preferences.defaultStyling, ['plain-css', 'tailwind'], 'plain-css'),
+      defaultTesting: oneOf(preferences.defaultTesting, ['none', 'vitest', 'playwright'], 'vitest'),
+      rememberLastStack: boolean(preferences.rememberLastStack, true),
+      confirmRequiredComponents: boolean(preferences.confirmRequiredComponents, true),
     },
     recentProjects: recent.map(readRecentProject).filter(isPresent).slice(0, MAX_RECENT_PROJECTS),
     activity: activity.map(readActivity).filter(isPresent).slice(0, MAX_ACTIVITY_ENTRIES),
+    customStackPresets: presets
+      .map(readCustomStackPreset)
+      .filter(isPresent)
+      .slice(0, MAX_CUSTOM_STACK_PRESETS),
+    ...(lastStack ? { lastStack } : {}),
   };
 }
 
@@ -144,6 +174,11 @@ function readActivity(value: unknown): ActivityEntry | undefined {
         'folder-opened',
         'creation-failed',
         'plugin-warning',
+        'stack-configured',
+        'preset-loaded',
+        'preset-saved',
+        'stack-generated',
+        'stack-validation-failed',
       ],
       'plugin-warning',
     ),
@@ -153,6 +188,40 @@ function readActivity(value: unknown): ActivityEntry | undefined {
     result: oneOf(value.result, ['success', 'warning', 'failed'], 'warning'),
     message,
   };
+}
+
+function readCustomStackPreset(value: unknown): CustomStackPreset | undefined {
+  if (!isRecord(value)) return undefined;
+  const definition = readStackDefinition(value.definition);
+  const id = safeText(value.id, 100);
+  const name = safeText(value.name, 120);
+  if (!definition || !id || !name) return undefined;
+  return {
+    schemaVersion: 1,
+    id,
+    name,
+    description: safeText(value.description, 300),
+    definition,
+    createdAt: safeText(value.createdAt, 60),
+    updatedAt: safeText(value.updatedAt, 60),
+  };
+}
+
+function readStackDefinition(value: unknown): StackDefinition | undefined {
+  if (!isRecord(value) || !isStackFramework(value.framework) || !Array.isArray(value.components))
+    return undefined;
+  const components = value.components.filter(isStackComponentId).slice(0, 30);
+  if (components.length !== value.components.length) return undefined;
+  const definition: StackDefinition = {
+    framework: value.framework,
+    components,
+    packageManager: oneOf(value.packageManager, ['pnpm', 'npm', 'yarn', 'bun'], 'pnpm'),
+    initializeGit: boolean(value.initializeGit, false),
+    addDocker: boolean(value.addDocker, false),
+    addGitHubActions: boolean(value.addGitHubActions, false),
+    ...(safeText(value.templateId, 100) ? { templateId: safeText(value.templateId, 100) } : {}),
+  };
+  return validateStack(definition).valid ? definition : undefined;
 }
 
 function safeText(value: unknown, limit: number): string {

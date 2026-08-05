@@ -4,6 +4,13 @@ import path from 'node:path';
 export type Framework = 'nextjs' | 'react-vite' | 'express' | 'node' | 'unknown';
 export type PackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun' | 'unknown';
 export type ProjectLanguage = 'typescript' | 'javascript' | 'unknown';
+export type StackDetectionState = 'detected' | 'likely-detected' | 'not-detected' | 'conflicting';
+
+export interface DetectedStackComponent {
+  id: string;
+  state: StackDetectionState;
+  evidence: string[];
+}
 
 export interface ProjectDetectionResult {
   directory: string;
@@ -16,6 +23,7 @@ export interface ProjectDetectionResult {
   devDependencies: Record<string, string>;
   detectedFiles: string[];
   warnings: string[];
+  stackComponents: DetectedStackComponent[];
 }
 
 interface PackageMetadata {
@@ -131,6 +139,13 @@ export async function detectProject(directory: string): Promise<ProjectDetection
     allDependencies,
     sourceLanguage,
   );
+  const stackComponents = await detectStackComponents(
+    resolvedDirectory,
+    framework,
+    language,
+    allDependencies,
+    detectedFiles,
+  );
 
   return {
     directory: resolvedDirectory,
@@ -143,7 +158,112 @@ export async function detectProject(directory: string): Promise<ProjectDetection
     devDependencies,
     detectedFiles,
     warnings,
+    stackComponents,
   };
+}
+
+async function detectStackComponents(
+  directory: string,
+  framework: Framework,
+  language: ProjectLanguage,
+  dependencies: Record<string, string>,
+  detectedFiles: string[],
+): Promise<DetectedStackComponent[]> {
+  const result: DetectedStackComponent[] = [];
+  const add = (id: string, state: StackDetectionState, evidence: string[]) =>
+    result.push({ id, state, evidence });
+  if (framework !== 'unknown' && framework !== 'node')
+    add(framework, 'detected', ['package metadata']);
+  if (language === 'typescript')
+    add('typescript', 'detected', ['tsconfig.json or TypeScript source']);
+  const checks = [
+    [
+      'tailwind',
+      ['tailwindcss'],
+      ['tailwind.config.js', 'tailwind.config.ts', 'postcss.config.mjs'],
+    ],
+    ['prisma', ['prisma', '@prisma/client'], ['prisma/schema.prisma']],
+    ['drizzle', ['drizzle-orm', 'drizzle-kit'], ['drizzle.config.ts', 'src/db/schema.ts']],
+    ['vitest', ['vitest'], ['vitest.config.ts', 'vitest.config.mts']],
+    ['playwright', ['@playwright/test'], ['playwright.config.ts']],
+  ] as const;
+  for (const [id, packages, files] of checks) {
+    const packageEvidence = packages.filter((name) => name in dependencies);
+    const fileEvidence: string[] = [];
+    for (const file of files) {
+      if (await exists(path.join(directory, file))) {
+        fileEvidence.push(file);
+        if (!detectedFiles.includes(file)) detectedFiles.push(file);
+      }
+    }
+    const evidence = [...packageEvidence.map((name) => `dependency:${name}`), ...fileEvidence];
+    if (evidence.length)
+      add(
+        id,
+        packageEvidence.length && fileEvidence.length ? 'detected' : 'likely-detected',
+        evidence,
+      );
+  }
+  const databaseEvidence = {
+    postgres: ['postgres', 'pg'].filter((name) => name in dependencies),
+    sqlite: ['better-sqlite3', 'sqlite3'].filter((name) => name in dependencies),
+  };
+  const databaseConfigEvidence = { postgres: [] as string[], sqlite: [] as string[] };
+  for (const file of ['prisma/schema.prisma', 'drizzle.config.ts', '.env.example']) {
+    try {
+      const content = await readFile(path.join(directory, file), 'utf8');
+      if (
+        /provider\s*=\s*['"]postgresql['"]|dialect\s*:\s*['"]postgresql['"]|postgres(?:ql)?:\/\//iu.test(
+          content,
+        )
+      )
+        databaseConfigEvidence.postgres.push(file);
+      if (/provider\s*=\s*['"]sqlite['"]|dialect\s*:\s*['"]sqlite['"]|file:\.\//iu.test(content))
+        databaseConfigEvidence.sqlite.push(file);
+    } catch {
+      // Evidence files are optional and scanning remains read-only and best-effort.
+    }
+  }
+  if (databaseEvidence.postgres.length || databaseConfigEvidence.postgres.length)
+    add(
+      'postgres',
+      databaseEvidence.postgres.length && databaseConfigEvidence.postgres.length
+        ? 'detected'
+        : 'likely-detected',
+      [
+        ...databaseEvidence.postgres.map((name) => `dependency:${name}`),
+        ...databaseConfigEvidence.postgres,
+      ],
+    );
+  if (databaseEvidence.sqlite.length || databaseConfigEvidence.sqlite.length)
+    add(
+      'sqlite',
+      databaseEvidence.sqlite.length && databaseConfigEvidence.sqlite.length
+        ? 'detected'
+        : 'likely-detected',
+      [
+        ...databaseEvidence.sqlite.map((name) => `dependency:${name}`),
+        ...databaseConfigEvidence.sqlite,
+      ],
+    );
+  if (
+    (databaseEvidence.postgres.length || databaseConfigEvidence.postgres.length) &&
+    (databaseEvidence.sqlite.length || databaseConfigEvidence.sqlite.length)
+  ) {
+    result
+      .filter(({ id }) => id === 'postgres' || id === 'sqlite')
+      .forEach((item) => (item.state = 'conflicting'));
+  }
+  for (const [id, file] of [
+    ['docker', 'Dockerfile'],
+    ['github-actions', '.github/workflows/ci.yml'],
+  ] as const) {
+    if (await exists(path.join(directory, file))) {
+      add(id, 'detected', [file]);
+      if (!detectedFiles.includes(file)) detectedFiles.push(file);
+    }
+  }
+  return result;
 }
 
 function parsePackageManager(value: unknown, warnings: string[]): PackageManager | undefined {

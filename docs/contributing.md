@@ -13,6 +13,12 @@ catalog and specialized local content live in `packages/templates/src/catalog.ts
 deterministic, centralize dependency versions, terminate generated text files with newlines, and
 never include timestamps, absolute paths, fetched content, remote assets, or fabricated lockfiles.
 
+Stack component metadata and compatibility belong in `packages/core/src/stacks.ts`; do not duplicate
+rules in React or Commander commands. Framework/component output must contribute through the unified
+generation-plan builder, with tests for dependency, script, environment, and file conflicts. New IDs
+also require worker and native allowlist review, scanner evidence, CLI coverage, persistence-tampering
+coverage, and updates to `docs/stack-builder.md`.
+
 Desktop pages belong in the React application, while detection, templates, plugins, and filesystem
 rules remain in shared packages or the Node worker. Native commands must be allowlisted, validate
 typed payloads, require a folder selected through the native picker, sanitize output, and never

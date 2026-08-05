@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { BUILTIN_TEMPLATES, type TemplateId } from '@forgecli7/templates/catalog';
 import { CreateWizard } from './CreateWizard';
 import {
@@ -25,10 +25,15 @@ import type {
   PersistedDesktopState,
 } from './types';
 
+const StackBuilderPage = lazy(() =>
+  import('./StackBuilder').then((module) => ({ default: module.StackBuilderPage })),
+);
+
 const navigation: readonly { id: NavigationPage; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: 'H' },
   { id: 'create', label: 'Create Project', icon: '+' },
   { id: 'templates', label: 'Templates', icon: 'T' },
+  { id: 'stack-builder', label: 'Stack Builder', icon: 'B' },
   { id: 'scan', label: 'Scan Project', icon: 'S' },
   { id: 'plugins', label: 'Plugins', icon: 'P' },
   { id: 'tools', label: 'Developer Tools', icon: 'D' },
@@ -184,6 +189,26 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
         );
       case 'templates':
         return <TemplatesPage templates={BUILTIN_TEMPLATES} onCreate={openTemplate} />;
+      case 'stack-builder':
+        return (
+          <Suspense fallback={<p className="loading-state">Loading Stack Builder…</p>}>
+            <StackBuilderPage
+              bridge={bridge}
+              preferences={state.preferences}
+              customPresets={state.customStackPresets}
+              initialStack={state.preferences.rememberLastStack ? state.lastStack : undefined}
+              onPresetsChange={(customStackPresets) =>
+                updateState((current) => ({ ...current, customStackPresets }))
+              }
+              onStackChange={(lastStack) => {
+                if (state.preferences.rememberLastStack)
+                  updateState((current) => ({ ...current, lastStack }));
+              }}
+              onCreated={projectCreated}
+              onActivity={record}
+            />
+          </Suspense>
+        );
       case 'scan':
         return (
           <ScanProjectPage

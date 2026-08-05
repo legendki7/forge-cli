@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   BUILTIN_TEMPLATES,
   getBuiltinTemplate,
+  isTemplateId,
   type TemplateId,
 } from '@forgecli7/templates/catalog';
 import {
@@ -406,7 +407,10 @@ function Success({
       <h2>{result.projectName} was created</h2>
       <p>{result.projectDirectory}</p>
       <p>
-        {getBuiltinTemplate(result.templateId).name} · {result.packageManager}
+        {isTemplateId(result.templateId)
+          ? getBuiltinTemplate(result.templateId).name
+          : result.templateId}{' '}
+        · {result.packageManager}
       </p>
       {result.warnings.length > 0 && (
         <div className="notice warning">

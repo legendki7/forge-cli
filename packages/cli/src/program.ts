@@ -3,6 +3,7 @@ import { loadPlugins, type PluginRegistry } from '@forgecli7/plugins';
 import { registerAddCommand } from './commands/add.js';
 import { registerCheckCommand } from './commands/check.js';
 import { registerCreateCommand, type CreateCommandDependencies } from './commands/create.js';
+import { registerStacksCommand } from './commands/stacks.js';
 import { createDefaultContext, type CommandContext } from './context.js';
 import { readCliPackageMetadata } from './package-metadata.js';
 
@@ -28,6 +29,7 @@ export function createProgram(
   registerCreateCommand(program, context, plugins, createDependencies);
   registerAddCommand(program, context, plugins);
   registerCheckCommand(program, context);
+  registerStacksCommand(program, context);
 
   return program;
 }
