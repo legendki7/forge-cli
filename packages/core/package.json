@@ -1,0 +1,40 @@
+{
+  "name": "@forgecli/core",
+  "version": "0.1.0",
+  "description": "Core contracts and shared types for ForgeCLI.",
+  "author": "ForgeCLI contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/legendki7/forge-cli.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/legendki7/forge-cli#readme",
+  "bugs": {
+    "url": "https://github.com/legendki7/forge-cli/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": "^20.0.0 || ^22.0.0 || ^24.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

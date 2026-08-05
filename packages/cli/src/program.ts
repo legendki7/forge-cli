@@ -1,0 +1,33 @@
+import { Command } from 'commander';
+import { loadPlugins, type PluginRegistry } from '@forgecli/plugins';
+import { registerAddCommand } from './commands/add.js';
+import { registerCheckCommand } from './commands/check.js';
+import { registerCreateCommand, type CreateCommandDependencies } from './commands/create.js';
+import { createDefaultContext, type CommandContext } from './context.js';
+import { readCliPackageMetadata } from './package-metadata.js';
+
+export function createProgram(
+  context: CommandContext = createDefaultContext(),
+  plugins: PluginRegistry = loadPlugins(),
+  createDependencies: CreateCommandDependencies = {},
+  version: string = readCliPackageMetadata().version,
+): Command {
+  const program = new Command();
+
+  program
+    .name('forge')
+    .description('Scaffold and configure development projects')
+    .version(version)
+    .showHelpAfterError();
+
+  program.addHelpText(
+    'after',
+    '\nExamples:\n  forge create\n  forge create my-app --no-git\n  forge add docker\n  forge check',
+  );
+
+  registerCreateCommand(program, context, plugins, createDependencies);
+  registerAddCommand(program, context, plugins);
+  registerCheckCommand(program, context);
+
+  return program;
+}

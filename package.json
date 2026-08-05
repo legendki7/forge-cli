@@ -1,0 +1,46 @@
+{
+  "name": "forge-cli-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A modular CLI foundation for scaffolding and configuring development projects.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/legendki7/forge-cli.git"
+  },
+  "homepage": "https://github.com/legendki7/forge-cli#readme",
+  "bugs": {
+    "url": "https://github.com/legendki7/forge-cli/issues"
+  },
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": "^20.0.0 || ^22.0.0 || ^24.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @forgecli/cli dev",
+    "build": "pnpm -r --sort build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "release": "pnpm release:inspect",
+    "release:inspect": "node scripts/release-inspect.mjs",
+    "release:smoke": "node scripts/packed-smoke.mjs",
+    "release:verify": "node scripts/release-verify.mjs",
+    "release:publish": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.6",
+    "@eslint/js": "^9.34.0",
+    "@types/node": "^22.17.2",
+    "eslint": "^9.34.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.40.0",
+    "vitest": "^3.2.4"
+  }
+}

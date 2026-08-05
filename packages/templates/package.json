@@ -1,0 +1,43 @@
+{
+  "name": "@forgecli/templates",
+  "version": "0.1.0",
+  "description": "Template contracts and registry for ForgeCLI.",
+  "author": "ForgeCLI contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/legendki7/forge-cli.git",
+    "directory": "packages/templates"
+  },
+  "homepage": "https://github.com/legendki7/forge-cli#readme",
+  "bugs": {
+    "url": "https://github.com/legendki7/forge-cli/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch"
+  },
+  "dependencies": {
+    "@forgecli/core": "workspace:*"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": "^20.0.0 || ^22.0.0 || ^24.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,183 @@
+# ForgeCLI
+
+ForgeCLI is an open-source, TypeScript-based command-line toolkit for scaffolding and configuring
+development projects. It provides a modular CLI shell, stable extension contracts, and dedicated
+packages for templates and plugins.
+
+> **Beta status:** ForgeCLI is preparing for its first public prerelease. APIs and generated output
+> may change before a stable release. It currently scaffolds Next.js TypeScript projects and provides
+> project detection, Docker configuration, and GitHub Actions CI generation.
+
+## Highlights
+
+- Type-safe Node.js CLI built with Commander.js, Inquirer, and Chalk
+- pnpm workspace with independently versioned packages
+- Typed, automatically loaded plugin registry
+- Project detection for Next.js, React/Vite, Express, and generic Node.js projects
+- Safe and idempotent plugin application
+- Project-aware GitHub Actions CI generation
+- Fast builds with tsup and tests with Vitest
+- Shared ESLint and Prettier configuration
+- Changesets-ready release workflow and GitHub Actions CI
+
+## Requirements
+
+- Node.js 20, 22, or 24
+- pnpm 9 or newer
+
+ForgeCLI supports the maintained Node.js majors exercised by CI: 20, 22, and 24. Unsupported
+versions fail at startup with an actionable message.
+
+## Installation
+
+The intended package name is `@forgecli/cli`, but scope ownership and npm availability must be
+confirmed manually before release. Until then, treat this command as a placeholder:
+
+```bash
+npm install --global @forgecli/cli
+forge --version
+```
+
+The npm package name may change after the availability check; the executable will remain `forge`.
+
+## Getting started
+
+```bash
+git clone https://github.com/legendki7/forge-cli.git
+cd forge-cli
+pnpm install
+pnpm build
+pnpm --filter @forgecli/cli start -- --help
+```
+
+During development, run the CLI directly from TypeScript:
+
+```bash
+pnpm dev -- create my-app --no-git
+pnpm dev -- add docker
+pnpm dev -- check
+```
+
+Run `forge add docker` from a Node.js project to create a starter `Dockerfile` and `.dockerignore`.
+Existing files are always preserved, so the command is safe to run repeatedly.
+
+## Commands
+
+| Command                    | Responsibility                                                 |
+| -------------------------- | -------------------------------------------------------------- |
+| `forge create [name]`      | Interactively or non-interactively scaffold a Next.js project  |
+| `forge add docker`         | Add non-destructive Docker configuration                       |
+| `forge add github-actions` | Add non-destructive, script-aware GitHub Actions CI            |
+| `forge add`                | List the currently available plugins                           |
+| `forge check`              | Report project framework, language, package manager, and files |
+
+## Repository layout
+
+```text
+forge-cli/
+|-- packages/
+|   |-- cli/                    # Commands and terminal presentation
+|   |-- core/                   # Shared contracts and domain types
+|   |-- templates/              # Template registry boundary
+|   `-- plugins/                # Plugin registry and loading
+|       `-- plugin-docker/      # Built-in Docker plugin
+|       `-- plugin-github-actions/ # Built-in GitHub Actions plugin
+|-- docs/                       # Architecture and contributor documentation
+|-- examples/                   # Usage examples and future fixtures
+`-- tests/                      # Cross-package and CLI composition tests
+```
+
+Dependencies flow inward: plugin contracts live in `core`, individual plugins implement those
+contracts without importing the CLI, and `@forgecli/plugins` loads built-ins into a registry. The
+CLI resolves plugins through that registry, so future implementations can be added without changing
+command parsing.
+
+## Plugin API
+
+Every plugin exposes `id`, `name`, `description`, `detect()`, and `apply()`. Detection reports the
+current project state; application returns structured status, created-file, and skipped-file data.
+Plugins should use exclusive file creation and preserve user-owned files.
+
+The built-in GitHub Actions plugin writes `.github/workflows/ci.yml`. It supports pnpm, npm, Yarn,
+and Bun, runs only the available `lint`, `typecheck`, `test`, and `build` scripts, and uses Node.js
+20/22 for Node-based package managers. Existing workflow files are never modified.
+
+## Project detection
+
+`forge check` reads project evidence from `package.json`, dependencies, configuration files,
+lockfiles, and source extensions. Supported framework results are Next.js, React with Vite,
+Express, generic Node.js, and unknown. TypeScript is detected from `tsconfig.json`, TypeScript
+dependencies, or `.ts`/`.tsx` source; otherwise recognizable JavaScript projects report JavaScript.
+
+Package managers are detected from lockfiles first, then the valid `packageManager` field in
+`package.json`. If several lockfiles exist, ForgeCLI reports a warning and uses the deterministic
+priority `pnpm > npm > yarn > bun`. A conflicting lockfile wins with a warning. Malformed or missing
+package metadata produces warnings rather than exceptions.
+
+Detection currently targets Node.js projects and does not infer monorepo subprojects, runtime ports,
+custom build pipelines, or application entry points. See [CLI commands](docs/commands.md) for output
+and Docker-generation details.
+
+## Creating a project
+
+```bash
+forge create
+forge create my-app
+forge create my-app --interactive
+forge create my-app --package-manager npm --no-git
+forge create my-app --docker --github-actions
+```
+
+Omitting the name starts an interactive wizard. `--interactive` (or `-i`) also enables the wizard
+when a name is supplied. Explicit flags are preserved and their questions are skipped; ForgeCLI asks
+only for missing values, shows a summary, and asks for confirmation before writing files. Next.js is
+the only framework currently supported, so it is selected without a framework question.
+
+`forge create my-app` remains fully non-interactive for scripts and CI. Its defaults are Next.js,
+pnpm, Git enabled, Docker disabled, and GitHub Actions disabled. npm, Yarn, and Bun are also supported.
+ForgeCLI does not install dependencies or fabricate lockfiles. Git initialization runs `git init`
+only. Use `--no-git`, `--no-docker`, and `--no-github-actions` to explicitly disable features in a
+partially or fully specified interactive command.
+
+Names are restricted to safe single-directory names. New projects are staged before atomic exposure;
+existing empty directories use exclusive creation locking. Existing files, non-empty directories,
+symbolic-link destinations, absolute paths, and traversal are rejected.
+
+## Development
+
+```bash
+pnpm dev          # Run the CLI source
+pnpm build        # Build every workspace package
+pnpm lint         # Run ESLint across the repository
+pnpm format       # Format supported files with Prettier
+pnpm test         # Run the Vitest suite once
+pnpm test:watch   # Run Vitest in watch mode
+```
+
+## Releases
+
+ForgeCLI uses [Changesets](https://github.com/changesets/changesets) to describe and publish package
+versions. `pnpm release:inspect` builds and validates the actual package tarballs without publishing;
+`pnpm release:smoke` installs them into an isolated temporary directory and exercises the packed
+CLI. `pnpm release:verify` performs the complete non-publishing release-candidate audit and remains
+blocked until repository identity is configured. Publishing is intentionally separate and opt-in.
+See [the release checklist](docs/releasing.md) and
+[current candidate report](docs/release-candidate-report.md) for the beta process.
+
+## Contributing
+
+Contributions are welcome. Keep new behavior in the package that owns the relevant concern, add
+tests for public behavior, and ensure `pnpm lint`, `pnpm test`, and `pnpm build` pass before opening
+a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) and
+[`docs/architecture.md`](docs/architecture.md) for package boundaries.
+
+### Beta feedback
+
+Beta testers can [open a bug report](https://github.com/legendki7/forge-cli/issues/new?template=bug_report.yml).
+Please include your operating system, Node.js version, package manager, command executed, expected
+behavior, actual behavior, sanitized error output, and whether the issue reproduces. Remove project
+secrets, tokens, usernames, and absolute paths before posting.
+
+## License
+
+ForgeCLI is available under the [MIT License](LICENSE).

@@ -1,0 +1,29 @@
+name: Bug report
+description: Report reproducible ForgeCLI behavior
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: Please search existing issues and never include credentials or private project data.
+  - type: input
+    id: version
+    attributes:
+      label: ForgeCLI version
+      placeholder: Output of forge --version
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: OS, Node.js version, and package manager
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include the command, expected result, and actual result.
+    validations:
+      required: true
