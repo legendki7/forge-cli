@@ -6,7 +6,7 @@ use std::{
         Mutex,
     },
 };
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_shell::{process::CommandEvent, ShellExt};
@@ -27,6 +27,7 @@ struct CreateRequest {
     package_manager: String,
     initialize_git: bool,
     add_docker: bool,
+    #[serde(rename = "addGitHubActions")]
     add_github_actions: bool,
 }
 
@@ -107,7 +108,9 @@ async fn create_project_inner(
     validate_boundary(request)?;
     let parent = PathBuf::from(&request.destination_directory)
         .canonicalize()
-        .map_err(|_| "The selected destination does not exist or cannot be accessed.".to_string())?;
+        .map_err(|_| {
+            "The selected destination does not exist or cannot be accessed.".to_string()
+        })?;
     if !parent.is_dir() {
         return Err("The selected destination is not a directory.".into());
     }
@@ -148,15 +151,21 @@ async fn create_project_inner(
                     match serde_json::from_str::<WorkerMessage>(&line) {
                         Ok(WorkerMessage::Progress(progress)) => {
                             app.emit("forgeki://creation-progress", progress)
-                                .map_err(|_| "ForgeKi could not update creation progress.".to_string())?;
+                                .map_err(|_| {
+                                    "ForgeKi could not update creation progress.".to_string()
+                                })?;
                         }
                         Ok(WorkerMessage::Result(result)) => {
                             verify_worker_destination(&parent, request, &result)?;
                             let canonical = PathBuf::from(&result.project_directory)
                                 .canonicalize()
-                                .map_err(|_| "The generated project could not be verified.".to_string())?;
-                            *state.last_project.lock().map_err(|_| "Desktop state is unavailable.")? =
-                                Some(canonical);
+                                .map_err(|_| {
+                                    "The generated project could not be verified.".to_string()
+                                })?;
+                            *state
+                                .last_project
+                                .lock()
+                                .map_err(|_| "Desktop state is unavailable.")? = Some(canonical);
                             return Ok(result);
                         }
                         Ok(WorkerMessage::Error(error)) => {
@@ -164,10 +173,17 @@ async fn create_project_inner(
                             return Err(if details.is_empty() {
                                 format!("{}: {}", error.code, error.message)
                             } else {
-                                format!("{}: {} ({})", error.code, error.message, sanitize(&details))
+                                format!(
+                                    "{}: {} ({})",
+                                    error.code,
+                                    error.message,
+                                    sanitize(&details)
+                                )
                             });
                         }
-                        Err(_) => return Err("The ForgeKi worker returned an invalid response.".into()),
+                        Err(_) => {
+                            return Err("The ForgeKi worker returned an invalid response.".into())
+                        }
                     }
                 }
             }
@@ -177,7 +193,9 @@ async fn create_project_inner(
                     stderr.truncate(1000);
                 }
             }
-            CommandEvent::Error(_) => return Err("The ForgeKi worker encountered a communication error.".into()),
+            CommandEvent::Error(_) => {
+                return Err("The ForgeKi worker encountered a communication error.".into())
+            }
             CommandEvent::Terminated(_) => break,
             _ => {}
         }
@@ -186,7 +204,9 @@ async fn create_project_inner(
     if details.is_empty() {
         Err("The ForgeKi worker stopped before project creation completed.".into())
     } else {
-        Err(format!("The ForgeKi worker stopped unexpectedly: {details}"))
+        Err(format!(
+            "The ForgeKi worker stopped unexpectedly: {details}"
+        ))
     }
 }
 
@@ -220,7 +240,10 @@ fn validate_boundary(request: &CreateRequest) -> Result<(), String> {
     if request.framework != "nextjs" {
         return Err("Only Next.js is supported.".into());
     }
-    if !matches!(request.package_manager.as_str(), "pnpm" | "npm" | "yarn" | "bun") {
+    if !matches!(
+        request.package_manager.as_str(),
+        "pnpm" | "npm" | "yarn" | "bun"
+    ) {
         return Err("The package manager is invalid.".into());
     }
     let parent = Path::new(&request.destination_directory);
@@ -257,7 +280,9 @@ fn verify_last_project(state: &DesktopState, requested: &str) -> Result<PathBuf,
         .lock()
         .map_err(|_| "Desktop state is unavailable.".to_string())?;
     if last.as_ref() != Some(&canonical) {
-        return Err("Only the project created by the current operation can be opened or copied.".into());
+        return Err(
+            "Only the project created by the current operation can be opened or copied.".into(),
+        );
     }
     Ok(canonical)
 }
@@ -270,6 +295,27 @@ fn sanitize(value: &str) -> String {
         .chars()
         .take(500)
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CreateRequest;
+
+    #[test]
+    fn accepts_the_desktop_github_actions_wire_name() {
+        let request: CreateRequest = serde_json::from_value(serde_json::json!({
+            "projectName": "native-smoke-test",
+            "destinationDirectory": "C:\\tmp",
+            "framework": "nextjs",
+            "packageManager": "pnpm",
+            "initializeGit": false,
+            "addDocker": true,
+            "addGitHubActions": true
+        }))
+        .expect("desktop request should deserialize");
+
+        assert!(request.add_github_actions);
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

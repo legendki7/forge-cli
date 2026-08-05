@@ -11,6 +11,7 @@ import {
   unlink,
 } from 'node:fs/promises';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import {
   createFileSafely,
   validateProjectName,
@@ -118,12 +119,7 @@ export async function createProject(options: CreateProjectOptions): Promise<Crea
       const git = await initializeGit(staging, options, warnings);
       gitInitialized = git;
       await applyRequestedPlugins(staging, options, createdFiles, appliedPlugins, warnings);
-      await rename(staging, destination).catch(() => {
-        throw new CreateProjectError(
-          'DESTINATION_BUSY',
-          `Could not finalize ${options.projectName}; the destination may have been created concurrently.`,
-        );
-      });
+      await finalizeStaging(staging, destination, options.projectName);
       return {
         projectDirectory: destination,
         createdFiles,
@@ -157,6 +153,37 @@ export async function createProject(options: CreateProjectOptions): Promise<Crea
   gitInitialized = await initializeGit(destination, options, warnings);
   await applyRequestedPlugins(destination, options, createdFiles, appliedPlugins, warnings);
   return { projectDirectory: destination, createdFiles, appliedPlugins, warnings, gitInitialized };
+}
+
+async function finalizeStaging(
+  staging: string,
+  destination: string,
+  projectName: string,
+): Promise<void> {
+  const attempts = 4;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      await rename(staging, destination);
+      return;
+    } catch {
+      if ((await destinationExists(destination)) || attempt === attempts - 1) {
+        throw new CreateProjectError(
+          'DESTINATION_BUSY',
+          `Could not finalize ${projectName}; the destination may have been created concurrently.`,
+        );
+      }
+      await delay(50 * (attempt + 1));
+    }
+  }
+}
+
+async function destinationExists(destination: string): Promise<boolean> {
+  try {
+    await lstat(destination);
+    return true;
+  } catch (error) {
+    return !isMissing(error);
+  }
 }
 
 async function inspectDestination(destination: string): Promise<{ exists: boolean }> {

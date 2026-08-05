@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "description": "ForgeKi Desktop project creation application.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/legendki7/forge-cli.git",
+    "directory": "apps/desktop"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +15,7 @@
     "build:worker": "tsup --config tsup.worker.config.ts",
     "build:sidecar": "pnpm build:worker && node scripts/build-sidecar.mjs",
     "tauri:dev": "tauri dev",
-    "tauri:build": "pnpm build:sidecar && tauri build",
+    "tauri:build": "pnpm build:sidecar && node scripts/build-native.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src vite.config.ts vitest.config.ts scripts",
     "test": "vitest run --config vitest.config.ts",

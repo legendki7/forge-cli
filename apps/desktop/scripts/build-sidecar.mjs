@@ -8,6 +8,11 @@ const appRoot = path.resolve(import.meta.dirname, '..');
 const binaryDirectory = path.join(appRoot, 'src-tauri', 'binaries');
 const extension = process.platform === 'win32' ? '.exe' : '';
 const temporaryOutput = path.join(binaryDirectory, `forgeki-worker${extension}`);
+const packageManagerCli = process.env.npm_execpath;
+
+if (!packageManagerCli) {
+  throw new Error('The sidecar build must be started through a pnpm workspace script.');
+}
 
 let targetTriple;
 try {
@@ -20,6 +25,7 @@ try {
 
 const pkgPlatform = { win32: 'win', darwin: 'macos', linux: 'linux' }[process.platform];
 const pkgArch = { x64: 'x64', arm64: 'arm64' }[process.arch];
+const sidecarNodeVersion = '22.23.2';
 if (!pkgPlatform || !pkgArch) {
   throw new Error(`Sidecar packaging is not configured for ${process.platform}/${process.arch}.`);
 }
@@ -27,17 +33,18 @@ if (!pkgPlatform || !pkgArch) {
 mkdirSync(binaryDirectory, { recursive: true });
 rmSync(temporaryOutput, { force: true });
 execFileSync(
-  'pnpm',
+  process.execPath,
   [
+    packageManagerCli,
     'exec',
     'pkg',
     path.join(appRoot, 'dist-worker', 'worker.cjs'),
     '--target',
-    `node20-${pkgPlatform}-${pkgArch}`,
+    `node${sidecarNodeVersion}-${pkgPlatform}-${pkgArch}`,
     '--output',
     temporaryOutput,
   ],
-  { cwd: appRoot, stdio: 'inherit', shell: process.platform === 'win32' },
+  { cwd: appRoot, stdio: 'inherit' },
 );
 
 const finalOutput = path.join(binaryDirectory, `forgeki-worker-${targetTriple}${extension}`);

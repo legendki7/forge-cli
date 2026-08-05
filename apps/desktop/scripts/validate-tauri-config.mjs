@@ -4,6 +4,8 @@ import path from 'node:path';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
 const tauriRoot = path.join(appRoot, 'src-tauri');
+const packageMetadata = JSON.parse(readFileSync(path.join(appRoot, 'package.json'), 'utf8'));
+const cargoMetadata = readFileSync(path.join(tauriRoot, 'Cargo.toml'), 'utf8');
 const config = JSON.parse(readFileSync(path.join(tauriRoot, 'tauri.conf.json'), 'utf8'));
 const capability = JSON.parse(
   readFileSync(path.join(tauriRoot, 'capabilities', 'default.json'), 'utf8'),
@@ -13,6 +15,20 @@ const failures = [];
 if (config.productName !== 'ForgeKi') failures.push('productName must be ForgeKi.');
 if (config.identifier !== 'com.legendki7.forgeki') failures.push('identifier is incorrect.');
 if (config.app?.windows?.[0]?.title !== 'ForgeKi') failures.push('window title must be ForgeKi.');
+if (config.version !== packageMetadata.version) {
+  failures.push('Tauri and desktop package versions must match.');
+}
+if (
+  !new RegExp(`^version = "${config.version.replaceAll('.', '\\.')}"$`, 'mu').test(cargoMetadata)
+) {
+  failures.push('Tauri and Cargo package versions must match.');
+}
+if (packageMetadata.repository?.url !== 'git+https://github.com/legendki7/forge-cli.git') {
+  failures.push('desktop repository metadata is incorrect.');
+}
+if (!/^repository = "https:\/\/github\.com\/legendki7\/forge-cli"$/mu.test(cargoMetadata)) {
+  failures.push('Cargo repository metadata is incorrect.');
+}
 if (!config.bundle?.externalBin?.includes('binaries/forgeki-worker')) {
   failures.push('the fixed ForgeKi worker sidecar must be bundled.');
 }

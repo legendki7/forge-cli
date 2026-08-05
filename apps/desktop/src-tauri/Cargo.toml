@@ -3,6 +3,7 @@ name = "forgeki-desktop"
 version = "0.1.0"
 description = "ForgeKi Desktop"
 authors = ["ForgeKi contributors"]
+repository = "https://github.com/legendki7/forge-cli"
 edition = "2021"
 
 [lib]

@@ -14,6 +14,7 @@ Thumbs.db
 *.tgz
 graphify-out/
 apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
 apps/desktop/dist-worker/
 apps/desktop/src-tauri/binaries/*
 !apps/desktop/src-tauri/binaries/.gitkeep

@@ -25,7 +25,8 @@ Bundled Node worker sidecar
 @forgecli7/core + templates + built-in plugins
 ```
 
-The worker is bundled as a platform-specific sidecar with its own Node runtime by `@yao-pkg/pkg`.
+The worker is bundled as a platform-specific sidecar with its own pinned Node 22.23.2 runtime by
+`@yao-pkg/pkg`.
 Users are not expected to install Node globally. The worker accepts exactly one creation request,
 does not accept executable names or shell arguments, emits structured progress, and exits. It calls
 `createProject()` and `loadPlugins()` directly; it never shells out to the `forge` executable.
@@ -74,6 +75,51 @@ pnpm desktop:build
 headless frontend and bridge tests, and a least-privilege configuration audit. `desktop:build`
 bundles the worker runtime and attempts a native application/bundle build. Missing native
 prerequisites are reported rather than installed.
+
+### Verified Windows build prerequisites
+
+ForgeKi Desktop has been built and smoke-tested locally on Windows 11 x64. No macOS or Linux native
+build is claimed as tested. A Windows build requires:
+
+- the stable `x86_64-pc-windows-msvc` Rust toolchain;
+- **Visual Studio Build Tools 2022** with the **Desktop development with C++** workload;
+- the **Microsoft Edge WebView2 Evergreen Runtime**; and
+- the Windows **VBSCRIPT** optional feature when generating MSI installers.
+
+The build never installs these system components. Follow the official
+[Tauri Windows prerequisites](https://v2.tauri.app/start/prerequisites/#windows), then run:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm desktop:check
+pnpm desktop:test
+pnpm desktop:build
+```
+
+Successful x64 Windows builds place the application and its fixed worker sidecar at:
+
+```text
+apps/desktop/src-tauri/target/release/forgeki-desktop.exe
+apps/desktop/src-tauri/target/release/forgeki-worker.exe
+```
+
+They place the unsigned installers at:
+
+```text
+apps/desktop/src-tauri/target/release/bundle/msi/ForgeKi_<version>_x64_en-US.msi
+apps/desktop/src-tauri/target/release/bundle/nsis/ForgeKi_<version>_x64-setup.exe
+```
+
+These artifacts are local build output and must not be committed. ForgeKi does not currently use
+code signing, so Windows may show an unknown-publisher or Microsoft Defender SmartScreen warning.
+Only continue past such a warning for an artifact you built yourself or obtained from a trusted,
+hash-verified source.
+
+For manual local installation, choose one installer format, close any running ForgeKi instance, run
+the MSI or NSIS setup executable, review the displayed product/version and unsigned-publisher state,
+and complete the per-user installation prompts. For a repository smoke test without installation,
+keep `forgeki-desktop.exe` and `forgeki-worker.exe` together and launch the application executable
+directly. Do not install both formats for the same test.
 
 ## User flow
 
