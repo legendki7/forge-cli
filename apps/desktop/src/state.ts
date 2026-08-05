@@ -1,9 +1,11 @@
 import { validateProjectName } from '@forgecli7/core/project-name';
 import type { DesktopCreateRequest, PackageManager, ProgressEvent, ProgressStepId } from './types';
+import type { TemplateId } from '@forgecli7/templates';
 
 export interface FormState {
   projectName: string;
   destinationDirectory: string;
+  templateId: TemplateId;
   packageManager: PackageManager;
   initializeGit: boolean;
   addDocker: boolean;
@@ -13,6 +15,7 @@ export interface FormState {
 export const initialFormState: FormState = {
   projectName: '',
   destinationDirectory: '',
+  templateId: 'nextjs-blank',
   packageManager: 'pnpm',
   initializeGit: true,
   addDocker: false,
@@ -45,6 +48,7 @@ export function createRequest(form: FormState): DesktopCreateRequest {
     projectName: form.projectName.trim(),
     destinationDirectory: form.destinationDirectory,
     framework: 'nextjs',
+    templateId: form.templateId,
     packageManager: form.packageManager,
     initializeGit: form.initializeGit,
     addDocker: form.addDocker,

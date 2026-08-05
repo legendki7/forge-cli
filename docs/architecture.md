@@ -6,7 +6,7 @@ small public API.
 `apps/desktop` is a private workspace application. Its React frontend uses the browser-safe
 `@forgecli7/core/project-name` export, while a packaged Node worker imports the full core,
 templates, registry, Docker, and GitHub Actions packages. Tauri mediates native operations through
-four narrow Rust commands and never exposes a general shell or filesystem API to the webview. See
+narrow typed Rust commands and never exposes a general shell or filesystem API to the webview. See
 [Desktop architecture](desktop.md) for the trust boundary and packaging tradeoffs.
 
 ## Package boundaries
@@ -15,7 +15,8 @@ four narrow Rust commands and never exposes a general shell or filesystem API to
   registered as isolated modules and receive dependencies through a command context.
 - **`@forgecli7/core`** owns shared contracts and the project detection engine. It uses Node.js
   filesystem APIs but has no terminal, prompt, or third-party runtime dependencies.
-- **`@forgecli7/templates`** defines template metadata and the template registry boundary.
+- **`@forgecli7/templates`** owns the strongly typed built-in template catalog and deterministic
+  renderers. It has no React or Tauri dependency.
 - **`@forgecli7/plugins`** owns the plugin registry and built-in plugin loader. Duplicate identifiers
   are rejected and lookups are case-insensitive.
 - **`@forgecli7/plugin-docker`** implements Docker detection and non-destructive Docker configuration.
@@ -90,14 +91,43 @@ a warning. Requested plugins receive the completed project in Docker then GitHub
 Plugin failures preserve the base scaffold and are returned as warnings rather than triggering
 rollback.
 
+The catalog contains five trusted `ForgeKiTemplate` implementations. Each returns an ordered
+in-memory file list from validated project name and package-manager options. The blank renderer
+preserves CLI output compatibility; Dashboard, Blog, Portfolio, and Landing Page specialize only
+the page, local styles, and explicitly declared supporting files. No renderer copies uncontrolled
+directories, fetches content, installs dependencies, emits timestamps, or fabricates lockfiles.
+
+## Desktop state and operations
+
+React owns presentation and typed application state. Rust owns the native folder picker, selected
+directory capability list, sidecar lifecycle, bounded local persistence, clipboard, and folder
+opening. The one-shot Node sidecar owns create, scan, built-in plugin inspection/application, and
+developer-tool checks so core TypeScript remains the business-logic source of truth.
+
+The persisted schema includes only preferences, recent-project metadata, bounded activity, and
+dismissed recommendation identifiers. Rust writes `desktop-state.json` under the Tauri application
+data directory, caps its size, rejects unsupported top-level fields and sensitive-looking keys, and
+recovers corrupted JSON as defaults through the frontend migration layer.
+
+Project access begins with the native folder picker. Rust canonicalizes and remembers selected or
+newly created directories; subsequent scan, plugin, open, and copy operations must match that
+capability list. The frontend cannot provide arbitrary executable names, sidecar arguments, plugin
+packages, or unrestricted paths.
+
+Developer-tool checks use ten fixed executable/argument definitions, `shell: false`, a timeout, and
+bounded sanitized output. Results distinguish installed, not detected, unavailable, and check
+failed instead of treating every failure as absence.
+
 ## Current scope
 
 The Docker plugin creates local configuration files only. Deployment, image building, registry
 publishing, dependency installation, template rendering, and project validation remain out of scope.
 
-ForgeKi Desktop supports only the existing Next.js TypeScript App Router scaffold. It is not an
-alternative project engine: it is a graphical adapter over the same `createProject()` operation and
-plugin order used by ForgeKi CLI.
+ForgeKi Desktop supports five Next.js TypeScript App Router presentations over the same safe
+scaffolder. It is not an alternative project engine: it is a graphical adapter over the same
+`createProject()` operation, detection rules, and plugin order used by ForgeKi CLI. Community plugin
+download, arbitrary package execution, dependency installation, deployment, accounts, automatic
+updates, and AI generation remain out of scope.
 
 ## Publishing model
 

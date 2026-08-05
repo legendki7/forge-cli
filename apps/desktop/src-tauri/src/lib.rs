@@ -1,21 +1,26 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{
+    fs,
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Mutex,
     },
 };
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_shell::{process::CommandEvent, ShellExt};
 
+const MAX_WORKER_OUTPUT: usize = 1_048_576;
+const MAX_STATE_SIZE: usize = 262_144;
+
 #[derive(Default)]
 struct DesktopState {
-    creating: AtomicBool,
+    operating: AtomicBool,
     next_operation: AtomicU64,
-    last_project: Mutex<Option<PathBuf>>,
+    allowed_projects: Mutex<Vec<PathBuf>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -24,6 +29,8 @@ struct CreateRequest {
     project_name: String,
     destination_directory: String,
     framework: String,
+    #[serde(default = "default_template_id")]
+    template_id: String,
     package_manager: String,
     initialize_git: bool,
     add_docker: bool,
@@ -31,11 +38,11 @@ struct CreateRequest {
     add_github_actions: bool,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct WorkerEnvelope<'a> {
-    operation_id: String,
-    request: &'a CreateRequest,
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PluginRequest {
+    project_directory: String,
+    plugin_id: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -53,6 +60,7 @@ struct CreateResult {
     project_name: String,
     project_directory: String,
     framework: String,
+    template_id: String,
     package_manager: String,
     initialized_features: Vec<String>,
     warnings: Vec<String>,
@@ -70,15 +78,26 @@ struct WorkerError {
 enum WorkerMessage {
     Progress(ProgressEvent),
     Result(CreateResult),
+    #[serde(rename = "operation-result")]
+    OperationResult(Value),
     Error(WorkerError),
 }
 
+enum WorkerOutput {
+    Create(CreateResult),
+    Operation(Value),
+}
+
 #[tauri::command]
-fn select_destination(app: AppHandle) -> Option<String> {
-    app.dialog()
-        .file()
-        .blocking_pick_folder()
-        .map(|selection| selection.to_string())
+fn select_destination(app: AppHandle, state: State<'_, DesktopState>) -> Option<String> {
+    let selection = app.dialog().file().blocking_pick_folder()?;
+    let selected = PathBuf::from(selection.to_string());
+    if let Ok(canonical) = selected.canonicalize() {
+        if canonical.is_dir() {
+            let _ = remember_allowed(&state, canonical);
+        }
+    }
+    Some(selection.to_string())
 }
 
 #[tauri::command]
@@ -87,16 +106,9 @@ async fn create_project(
     state: State<'_, DesktopState>,
     request: CreateRequest,
 ) -> Result<CreateResult, String> {
-    if state
-        .creating
-        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-        .is_err()
-    {
-        return Err("A project creation operation is already running.".into());
-    }
-
+    begin_operation(&state)?;
     let result = create_project_inner(&app, &state, &request).await;
-    state.creating.store(false, Ordering::Release);
+    state.operating.store(false, Ordering::Release);
     result
 }
 
@@ -105,42 +117,139 @@ async fn create_project_inner(
     state: &DesktopState,
     request: &CreateRequest,
 ) -> Result<CreateResult, String> {
-    validate_boundary(request)?;
-    let parent = PathBuf::from(&request.destination_directory)
-        .canonicalize()
-        .map_err(|_| {
-            "The selected destination does not exist or cannot be accessed.".to_string()
-        })?;
-    if !parent.is_dir() {
-        return Err("The selected destination is not a directory.".into());
-    }
+    validate_create_request(request)?;
+    let parent = canonical_directory(&request.destination_directory)?;
+    ensure_allowed(state, &parent)?;
+    let output = run_worker(
+        app,
+        state,
+        "create",
+        serde_json::to_value(request).map_err(|_| "The project request could not be encoded.")?,
+        true,
+    )
+    .await?;
+    let WorkerOutput::Create(result) = output else {
+        return Err("The ForgeKi worker returned an invalid creation response.".into());
+    };
+    verify_worker_destination(&parent, request, &result)?;
+    let created = canonical_directory(&result.project_directory)?;
+    remember_allowed(state, created)?;
+    Ok(result)
+}
 
+#[tauri::command]
+async fn scan_project(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    path: String,
+) -> Result<Value, String> {
+    let directory = verified_project(&state, &path)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "scan",
+        serde_json::json!({ "projectDirectory": directory }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn inspect_builtin_plugins(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    path: Option<String>,
+) -> Result<Value, String> {
+    let directory = match path {
+        Some(value) => Some(verified_project(&state, &value)?),
+        None => None,
+    };
+    let request = directory
+        .map(|value| serde_json::json!({ "projectDirectory": value }))
+        .unwrap_or_else(|| serde_json::json!({}));
+    run_typed_operation(&app, &state, "inspect-plugins", request).await
+}
+
+#[tauri::command]
+async fn apply_builtin_plugin(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    request: PluginRequest,
+) -> Result<Value, String> {
+    if !matches!(request.plugin_id.as_str(), "docker" | "github-actions") {
+        return Err("Only trusted built-in plugins can be applied.".into());
+    }
+    let directory = verified_project(&state, &request.project_directory)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "apply-plugin",
+        serde_json::json!({
+            "projectDirectory": directory,
+            "pluginId": request.plugin_id,
+        }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn check_developer_tools(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+) -> Result<Value, String> {
+    run_typed_operation(&app, &state, "check-tools", serde_json::json!({})).await
+}
+
+async fn run_typed_operation(
+    app: &AppHandle,
+    state: &DesktopState,
+    operation: &str,
+    request: Value,
+) -> Result<Value, String> {
+    begin_operation(state)?;
+    let result = run_worker(app, state, operation, request, false).await;
+    state.operating.store(false, Ordering::Release);
+    match result? {
+        WorkerOutput::Operation(value) => Ok(value),
+        WorkerOutput::Create(_) => Err("The ForgeKi worker returned an invalid response.".into()),
+    }
+}
+
+async fn run_worker(
+    app: &AppHandle,
+    state: &DesktopState,
+    operation: &str,
+    request: Value,
+    emit_progress: bool,
+) -> Result<WorkerOutput, String> {
     let operation_id = format!(
         "desktop-{}",
         state.next_operation.fetch_add(1, Ordering::Relaxed) + 1
     );
-    let envelope = WorkerEnvelope {
-        operation_id,
-        request,
-    };
-    let input = serde_json::to_string(&envelope)
-        .map_err(|_| "The project creation request could not be encoded.".to_string())?;
+    let input = serde_json::to_string(&serde_json::json!({
+        "operationId": operation_id,
+        "operation": operation,
+        "request": request,
+    }))
+    .map_err(|_| "The desktop request could not be encoded.".to_string())?;
     let sidecar = app
         .shell()
         .sidecar("forgeki-worker")
-        .map_err(|_| "The bundled ForgeKi project worker is unavailable.".to_string())?;
+        .map_err(|_| "The bundled ForgeKi worker is unavailable.".to_string())?;
     let (mut events, mut child) = sidecar
         .spawn()
-        .map_err(|_| "The bundled ForgeKi project worker could not be started.".to_string())?;
+        .map_err(|_| "The bundled ForgeKi worker could not be started.".to_string())?;
     child
         .write(format!("{input}\n").as_bytes())
-        .map_err(|_| "ForgeKi could not send the project request to its worker.".to_string())?;
+        .map_err(|_| "ForgeKi could not send the request to its worker.".to_string())?;
 
     let mut stdout = String::new();
     let mut stderr = String::new();
     while let Some(event) = events.recv().await {
         match event {
             CommandEvent::Stdout(bytes) => {
+                if stdout.len() + bytes.len() > MAX_WORKER_OUTPUT {
+                    return Err("The ForgeKi worker returned too much output.".into());
+                }
                 stdout.push_str(&String::from_utf8_lossy(&bytes));
                 while let Some(index) = stdout.find('\n') {
                     let line = stdout[..index].trim().to_string();
@@ -149,38 +258,20 @@ async fn create_project_inner(
                         continue;
                     }
                     match serde_json::from_str::<WorkerMessage>(&line) {
-                        Ok(WorkerMessage::Progress(progress)) => {
+                        Ok(WorkerMessage::Progress(progress)) if emit_progress => {
                             app.emit("forgeki://creation-progress", progress)
                                 .map_err(|_| {
                                     "ForgeKi could not update creation progress.".to_string()
                                 })?;
                         }
+                        Ok(WorkerMessage::Progress(_)) => {}
                         Ok(WorkerMessage::Result(result)) => {
-                            verify_worker_destination(&parent, request, &result)?;
-                            let canonical = PathBuf::from(&result.project_directory)
-                                .canonicalize()
-                                .map_err(|_| {
-                                    "The generated project could not be verified.".to_string()
-                                })?;
-                            *state
-                                .last_project
-                                .lock()
-                                .map_err(|_| "Desktop state is unavailable.")? = Some(canonical);
-                            return Ok(result);
+                            return Ok(WorkerOutput::Create(result))
                         }
-                        Ok(WorkerMessage::Error(error)) => {
-                            let details = error.details.unwrap_or_default();
-                            return Err(if details.is_empty() {
-                                format!("{}: {}", error.code, error.message)
-                            } else {
-                                format!(
-                                    "{}: {} ({})",
-                                    error.code,
-                                    error.message,
-                                    sanitize(&details)
-                                )
-                            });
+                        Ok(WorkerMessage::OperationResult(result)) => {
+                            return Ok(WorkerOutput::Operation(result))
                         }
+                        Ok(WorkerMessage::Error(error)) => return Err(worker_error(error)),
                         Err(_) => {
                             return Err("The ForgeKi worker returned an invalid response.".into())
                         }
@@ -202,7 +293,7 @@ async fn create_project_inner(
     }
     let details = sanitize(&stderr);
     if details.is_empty() {
-        Err("The ForgeKi worker stopped before project creation completed.".into())
+        Err("The ForgeKi worker stopped before the operation completed.".into())
     } else {
         Err(format!(
             "The ForgeKi worker stopped unexpectedly: {details}"
@@ -211,8 +302,44 @@ async fn create_project_inner(
 }
 
 #[tauri::command]
+fn load_desktop_state(app: AppHandle) -> Result<Value, String> {
+    let path = desktop_state_path(&app)?;
+    if !path.exists() {
+        return Ok(Value::Null);
+    }
+    let contents = fs::read_to_string(path)
+        .map_err(|_| "ForgeKi preferences could not be read.".to_string())?;
+    if contents.len() > MAX_STATE_SIZE {
+        return Ok(Value::Null);
+    }
+    Ok(serde_json::from_str(&contents).unwrap_or(Value::Null))
+}
+
+#[tauri::command]
+fn save_desktop_state(app: AppHandle, state: Value) -> Result<(), String> {
+    validate_persisted_state(&state)?;
+    let path = desktop_state_path(&app)?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| "The ForgeKi data directory is unavailable.".to_string())?;
+    fs::create_dir_all(parent)
+        .map_err(|_| "The ForgeKi data directory could not be created.".to_string())?;
+    let encoded = serde_json::to_vec_pretty(&state)
+        .map_err(|_| "ForgeKi preferences could not be encoded.".to_string())?;
+    let temporary = path.with_extension("json.tmp");
+    fs::write(&temporary, encoded)
+        .map_err(|_| "ForgeKi preferences could not be saved.".to_string())?;
+    if path.exists() {
+        fs::remove_file(&path)
+            .map_err(|_| "Existing ForgeKi preferences could not be replaced.".to_string())?;
+    }
+    fs::rename(temporary, path)
+        .map_err(|_| "ForgeKi preferences could not be finalized.".to_string())
+}
+
+#[tauri::command]
 fn open_project_folder(state: State<'_, DesktopState>, path: String) -> Result<(), String> {
-    let verified = verify_last_project(&state, &path)?;
+    let verified = verified_project(&state, &path)?;
     open::that_detached(verified).map_err(|_| "The project folder could not be opened.".to_string())
 }
 
@@ -222,13 +349,21 @@ fn copy_project_path(
     state: State<'_, DesktopState>,
     path: String,
 ) -> Result<(), String> {
-    let verified = verify_last_project(&state, &path)?;
+    let verified = verified_project(&state, &path)?;
     app.clipboard()
         .write_text(verified.to_string_lossy().into_owned())
         .map_err(|_| "The project path could not be copied.".to_string())
 }
 
-fn validate_boundary(request: &CreateRequest) -> Result<(), String> {
+fn begin_operation(state: &DesktopState) -> Result<(), String> {
+    state
+        .operating
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .map(|_| ())
+        .map_err(|_| "Another ForgeKi operation is already running.".into())
+}
+
+fn validate_create_request(request: &CreateRequest) -> Result<(), String> {
     if request.project_name.trim().is_empty()
         || request
             .project_name
@@ -239,6 +374,12 @@ fn validate_boundary(request: &CreateRequest) -> Result<(), String> {
     }
     if request.framework != "nextjs" {
         return Err("Only Next.js is supported.".into());
+    }
+    if !matches!(
+        request.template_id.as_str(),
+        "nextjs-blank" | "nextjs-dashboard" | "nextjs-blog" | "nextjs-portfolio" | "nextjs-landing"
+    ) {
+        return Err("The selected built-in template is invalid.".into());
     }
     if !matches!(
         request.package_manager.as_str(),
@@ -265,26 +406,127 @@ fn verify_worker_destination(
     let reported = PathBuf::from(&result.project_directory)
         .canonicalize()
         .map_err(|_| "The generated project could not be verified.".to_string())?;
-    if reported != expected {
-        return Err("The project worker returned an unexpected destination.".into());
+    if reported != expected || result.template_id != request.template_id {
+        return Err("The project worker returned an unexpected destination or template.".into());
     }
     Ok(())
 }
 
-fn verify_last_project(state: &DesktopState, requested: &str) -> Result<PathBuf, String> {
-    let canonical = PathBuf::from(requested)
+fn canonical_directory(value: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(value);
+    if !path.is_absolute() || value.contains('\0') {
+        return Err("A selected absolute project directory is required.".into());
+    }
+    let canonical = path
         .canonicalize()
-        .map_err(|_| "The project folder no longer exists.".to_string())?;
-    let last = state
-        .last_project
-        .lock()
-        .map_err(|_| "Desktop state is unavailable.".to_string())?;
-    if last.as_ref() != Some(&canonical) {
-        return Err(
-            "Only the project created by the current operation can be opened or copied.".into(),
-        );
+        .map_err(|_| "The selected directory does not exist or cannot be accessed.".to_string())?;
+    if !canonical.is_dir() {
+        return Err("The selected path is not a directory.".into());
     }
     Ok(canonical)
+}
+
+fn remember_allowed(state: &DesktopState, path: PathBuf) -> Result<(), String> {
+    let mut allowed = state
+        .allowed_projects
+        .lock()
+        .map_err(|_| "Desktop state is unavailable.".to_string())?;
+    if !allowed.contains(&path) {
+        allowed.push(path);
+        if allowed.len() > 50 {
+            allowed.remove(0);
+        }
+    }
+    Ok(())
+}
+
+fn ensure_allowed(state: &DesktopState, canonical: &Path) -> Result<(), String> {
+    let allowed = state
+        .allowed_projects
+        .lock()
+        .map_err(|_| "Desktop state is unavailable.".to_string())?;
+    if allowed.iter().any(|candidate| candidate == canonical) {
+        Ok(())
+    } else {
+        Err("ForgeKi can only access a directory selected in the native folder picker.".into())
+    }
+}
+
+fn verified_project(state: &DesktopState, requested: &str) -> Result<PathBuf, String> {
+    let canonical = canonical_directory(requested)?;
+    ensure_allowed(state, &canonical)?;
+    Ok(canonical)
+}
+
+fn desktop_state_path(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|directory| directory.join("desktop-state.json"))
+        .map_err(|_| "The ForgeKi application data directory is unavailable.".into())
+}
+
+fn validate_persisted_state(state: &Value) -> Result<(), String> {
+    let encoded =
+        serde_json::to_vec(state).map_err(|_| "ForgeKi preferences are invalid.".to_string())?;
+    if encoded.len() > MAX_STATE_SIZE {
+        return Err("ForgeKi preferences exceed the local storage limit.".into());
+    }
+    let object = state
+        .as_object()
+        .ok_or_else(|| "ForgeKi preferences must be an object.".to_string())?;
+    if object.keys().any(|key| {
+        !matches!(
+            key.as_str(),
+            "schemaVersion" | "preferences" | "recentProjects" | "activity"
+        )
+    }) || object.get("schemaVersion").and_then(Value::as_u64) != Some(1)
+    {
+        return Err("ForgeKi preferences use an unsupported schema.".into());
+    }
+    reject_sensitive_keys(state)
+}
+
+fn reject_sensitive_keys(value: &Value) -> Result<(), String> {
+    match value {
+        Value::Object(object) => {
+            for (key, child) in object {
+                let normalized = key.to_ascii_lowercase();
+                if [
+                    "token",
+                    "secret",
+                    "credential",
+                    "password",
+                    "environment",
+                    "npmrc",
+                ]
+                .iter()
+                .any(|blocked| normalized.contains(blocked))
+                {
+                    return Err("Sensitive values cannot be persisted by ForgeKi.".into());
+                }
+                reject_sensitive_keys(child)?;
+            }
+        }
+        Value::Array(values) => {
+            for child in values {
+                reject_sensitive_keys(child)?;
+            }
+        }
+        Value::String(text) if text.len() > 2000 => {
+            return Err("A persisted ForgeKi value is too large.".into())
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn worker_error(error: WorkerError) -> String {
+    let details = error.details.unwrap_or_default();
+    if details.is_empty() {
+        format!("{}: {}", error.code, error.message)
+    } else {
+        format!("{}: {} ({})", error.code, error.message, sanitize(&details))
+    }
 }
 
 fn sanitize(value: &str) -> String {
@@ -297,24 +539,56 @@ fn sanitize(value: &str) -> String {
         .collect()
 }
 
+fn default_template_id() -> String {
+    "nextjs-blank".into()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::CreateRequest;
+    use super::{validate_create_request, validate_persisted_state, CreateRequest};
 
     #[test]
-    fn accepts_the_desktop_github_actions_wire_name() {
+    fn accepts_the_desktop_template_and_github_actions_wire_names() {
         let request: CreateRequest = serde_json::from_value(serde_json::json!({
             "projectName": "native-smoke-test",
             "destinationDirectory": "C:\\tmp",
             "framework": "nextjs",
+            "templateId": "nextjs-dashboard",
             "packageManager": "pnpm",
             "initializeGit": false,
             "addDocker": true,
             "addGitHubActions": true
         }))
         .expect("desktop request should deserialize");
-
         assert!(request.add_github_actions);
+        assert_eq!(request.template_id, "nextjs-dashboard");
+        validate_create_request(&request).expect("request should be valid");
+    }
+
+    #[test]
+    fn rejects_arbitrary_templates() {
+        let request = CreateRequest {
+            project_name: "app".into(),
+            destination_directory: "C:\\tmp".into(),
+            framework: "nextjs".into(),
+            template_id: "remote-package".into(),
+            package_manager: "pnpm".into(),
+            initialize_git: false,
+            add_docker: false,
+            add_github_actions: false,
+        };
+        assert!(validate_create_request(&request).is_err());
+    }
+
+    #[test]
+    fn persistence_rejects_sensitive_keys() {
+        let value = serde_json::json!({
+            "schemaVersion": 1,
+            "preferences": { "token": "not-allowed" },
+            "recentProjects": [],
+            "activity": []
+        });
+        assert!(validate_persisted_state(&value).is_err());
     }
 }
 
@@ -328,6 +602,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             select_destination,
             create_project,
+            scan_project,
+            inspect_builtin_plugins,
+            apply_builtin_plugin,
+            check_developer_tools,
+            load_desktop_state,
+            save_desktop_state,
             open_project_folder,
             copy_project_path
         ])

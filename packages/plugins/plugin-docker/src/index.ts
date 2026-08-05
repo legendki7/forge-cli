@@ -8,6 +8,7 @@ import type {
 } from '@forgecli7/core';
 import { createFileSafely, detectProject } from '@forgecli7/core';
 import { dockerignore, generateDockerfile } from './templates.js';
+import packageMetadata from '../package.json' with { type: 'json' };
 
 const managedFiles = ['Dockerfile', '.dockerignore'] as const;
 
@@ -88,6 +89,9 @@ export const dockerPlugin: ForgePlugin = {
   id: 'docker',
   name: 'Docker',
   description: 'Add a Dockerfile and .dockerignore to a Node.js project.',
+  version: packageMetadata.version,
+  supportedFrameworks: ['nextjs', 'react-vite', 'express', 'node'],
+  managedFiles,
   detect,
   apply,
 };

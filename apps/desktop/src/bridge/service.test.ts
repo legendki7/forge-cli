@@ -3,7 +3,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { detectProject } from '@forgecli7/core';
-import { handleWorkerEnvelope, validateRequest, type WorkerMessage } from './service';
+import {
+  handleWorkerEnvelope,
+  scanProjectDirectory,
+  validateRequest,
+  type WorkerMessage,
+} from './service';
 
 const temporaryDirectories: string[] = [];
 
@@ -100,6 +105,49 @@ describe('desktop worker security boundary', () => {
     expect(second.at(-1)).toMatchObject({
       type: 'error',
       payload: { code: 'DESTINATION_NOT_EMPTY' },
+    });
+  });
+
+  it('generates rule-based scanner recommendations from shared detection state', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'forgeki-desktop-scan-'));
+    temporaryDirectories.push(root);
+    await handleWorkerEnvelope(
+      {
+        operationId: 'create-scan',
+        request: { ...request(root), addDocker: false, addGitHubActions: false },
+      },
+      () => undefined,
+    );
+    const project = path.join(root, 'desktop-app');
+    const scan = await scanProjectDirectory(project);
+    expect(scan.framework).toBe('nextjs');
+    expect(scan.language).toBe('typescript');
+    expect(scan.recommendations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'docker-missing', pluginId: 'docker' }),
+        expect.objectContaining({ id: 'github-actions-missing', pluginId: 'github-actions' }),
+        expect.objectContaining({ id: 'typescript-present' }),
+      ]),
+    );
+  });
+
+  it('rejects arbitrary plugin ids and executable fields in operation payloads', async () => {
+    const messages: WorkerMessage[] = [];
+    await handleWorkerEnvelope(
+      {
+        operationId: 'unsafe-plugin',
+        operation: 'apply-plugin',
+        request: {
+          projectDirectory: 'C:\\projects',
+          pluginId: 'remote-package',
+          executable: 'cmd',
+        },
+      },
+      (message) => messages.push(message),
+    );
+    expect(messages.at(-1)).toMatchObject({
+      type: 'error',
+      payload: { code: 'UNEXPECTED_ERROR' },
     });
   });
 });

@@ -19,6 +19,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./catalog": {
+      "types": "./dist/catalog.d.ts",
+      "import": "./dist/catalog.js"
     }
   },
   "files": [
@@ -27,8 +31,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
-    "dev": "tsup src/index.ts --format esm --dts --watch"
+    "build": "tsup src/index.ts src/catalog.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts src/catalog.ts --format esm --dts --watch"
   },
   "dependencies": {
     "@forgecli7/core": "workspace:*"

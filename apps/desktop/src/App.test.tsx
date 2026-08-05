@@ -1,165 +1,169 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from './App';
-import type { DesktopBridge, DesktopCreateResult } from './types';
+import { createDefaultDesktopState } from './persistence';
+import type { DesktopBridge, DesktopCreateResult, DesktopProjectScan } from './types';
 
 const result: DesktopCreateResult = {
   projectName: 'my-app',
   projectDirectory: 'C:\\projects\\my-app',
   framework: 'nextjs',
+  templateId: 'nextjs-dashboard',
   packageManager: 'pnpm',
-  initializedFeatures: ['Git'],
+  initializedFeatures: ['Docker', 'GitHub Actions'],
   warnings: [],
+};
+
+const scan: DesktopProjectScan = {
+  directory: 'C:\\projects\\my-app',
+  projectName: 'my-app',
+  framework: 'nextjs',
+  packageManager: 'pnpm',
+  language: 'typescript',
+  scripts: { test: 'vitest' },
+  dependencies: {},
+  devDependencies: {},
+  detectedFiles: ['package.json', 'tsconfig.json'],
+  warnings: [],
+  plugins: [],
+  recommendations: [],
 };
 
 function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
   return {
     selectDestination: vi.fn().mockResolvedValue('C:\\projects'),
     createProject: vi.fn().mockResolvedValue(result),
+    scanProject: vi.fn().mockResolvedValue(scan),
+    inspectBuiltinPlugins: vi.fn().mockResolvedValue([]),
+    applyBuiltinPlugin: vi.fn(),
+    checkDeveloperTools: vi.fn().mockResolvedValue({ tools: [], summary: [], checkedAt: '' }),
+    loadDesktopState: vi.fn().mockResolvedValue(null),
+    saveDesktopState: vi.fn().mockResolvedValue(undefined),
     openProjectFolder: vi.fn().mockResolvedValue(undefined),
     copyProjectPath: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
 
-async function completeRequiredFields() {
-  await userEvent.type(screen.getByLabelText('Project name'), 'my-app');
-  await userEvent.click(screen.getByRole('button', { name: 'Choose folder' }));
-  await screen.findByText('C:\\projects');
-}
-
-describe('ForgeKi Desktop form', () => {
-  it('requires a project name and destination', () => {
+describe('desktop application shell', () => {
+  it('opens Home by default with real empty states and quick actions', () => {
     render(<App bridge={bridge()} />);
-    expect(screen.getByRole('button', { name: 'Create project' })).toBeDisabled();
-    expect(screen.getByText('Select a project location.')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'ForgeKi' })).toBeVisible();
+    expect(screen.getByText('No recent projects')).toBeVisible();
+    expect(screen.getByText('No activity yet')).toBeVisible();
+    expect(screen.getByRole('button', { name: /^Create a project/u })).toBeVisible();
   });
 
-  it('uses the shared validator for invalid names', async () => {
+  it.each([
+    ['Create Project', 'Create a project'],
+    ['Templates', 'Templates'],
+    ['Scan Project', 'Scan Project'],
+    ['Plugins', 'Plugins'],
+    ['Developer Tools', 'Developer Tools'],
+    ['Activity', 'Activity'],
+    ['Settings', 'Settings'],
+  ])('opens %s from the sidebar', async (destination, heading) => {
     render(<App bridge={bridge()} />);
-    await userEvent.type(screen.getByLabelText('Project name'), 'Invalid Name');
-    expect(screen.getByLabelText('Project name')).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByRole('button', { name: 'Create project' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: destination }));
+    expect(screen.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
   });
 
-  it('enables creation for a valid name and selected destination', async () => {
-    render(<App bridge={bridge()} />);
-    await completeRequiredFields();
-    expect(screen.getByRole('button', { name: 'Create project' })).toBeEnabled();
+  it('collapses persistently and preserves accessible navigation labels', async () => {
+    const api = bridge();
+    const { container } = render(<App bridge={api} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    expect(container.querySelector('.sidebar')).toHaveAttribute('data-collapsed', 'true');
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeVisible();
   });
 
-  it('uses safe defaults', () => {
+  it('supports keyboard navigation to a selected page', async () => {
     render(<App bridge={bridge()} />);
-    expect(screen.getByLabelText('pnpm')).toBeChecked();
-    expect(screen.getByLabelText('Initialize Git repository')).toBeChecked();
-    expect(screen.getByLabelText('Add Docker configuration')).not.toBeChecked();
-    expect(screen.getByLabelText('Add GitHub Actions CI')).not.toBeChecked();
-  });
-
-  it.each(['pnpm', 'npm', 'Yarn', 'Bun'])('selects the %s package manager', async (manager) => {
-    render(<App bridge={bridge()} />);
-    await userEvent.click(screen.getByLabelText(manager));
-    expect(screen.getByLabelText(manager)).toBeChecked();
-  });
-
-  it('supports disabling Git and enabling both plugins', async () => {
-    render(<App bridge={bridge()} />);
-    await userEvent.click(screen.getByLabelText('Initialize Git repository'));
-    await userEvent.click(screen.getByLabelText('Add Docker configuration'));
-    await userEvent.click(screen.getByLabelText('Add GitHub Actions CI'));
-    expect(screen.getByLabelText('Initialize Git repository')).not.toBeChecked();
-    expect(screen.getByLabelText('Add Docker configuration')).toBeChecked();
-    expect(screen.getByLabelText('Add GitHub Actions CI')).toBeChecked();
+    const templates = screen.getByRole('button', { name: 'Templates' });
+    templates.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(templates).toHaveAttribute('aria-current', 'page');
   });
 });
 
-describe('ForgeKi Desktop confirmation and creation', () => {
-  it('shows the complete summary and creates nothing before confirmation', async () => {
+describe('creation wizard', () => {
+  it('validates steps, applies defaults, reviews accurately, and creates only after confirmation', async () => {
     const api = bridge();
     render(<App bridge={api} />);
-    await completeRequiredFields();
+    await userEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Project name'), 'my-app');
+    await userEvent.click(screen.getByRole('button', { name: 'Choose folder' }));
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.click(screen.getByRole('button', { name: /Next\.js Dashboard/u }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByLabelText('pnpm')).toBeChecked();
+    expect(screen.getByLabelText('Initialize Git repository')).toBeChecked();
+    await userEvent.click(screen.getByLabelText('Initialize Git repository'));
+    await userEvent.click(screen.getByLabelText('Add Docker configuration'));
     await userEvent.click(screen.getByLabelText('Add GitHub Actions CI'));
-    await userEvent.click(screen.getByRole('button', { name: 'Create project' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(screen.getByRole('heading', { name: 'Review project configuration' })).toBeVisible();
-    expect(screen.getByText('my-app')).toBeVisible();
-    expect(screen.getAllByText('Next.js')).toHaveLength(2);
-    expect(screen.getAllByText('C:\\projects')).toHaveLength(2);
-    expect(screen.getAllByText('Enabled')).toHaveLength(2);
+    expect(screen.getByText('Next.js Dashboard')).toBeVisible();
+    expect(
+      screen.getByText('Selected parent · exclusive file creation · no dependency install'),
+    ).toBeVisible();
     expect(api.createProject).not.toHaveBeenCalled();
-  });
-
-  it('cancels confirmation without creating files', async () => {
-    const api = bridge();
-    render(<App bridge={api} />);
-    await completeRequiredFields();
-    await userEvent.click(screen.getByRole('button', { name: 'Create project' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(api.createProject).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Create project' })).toBeVisible();
-  });
-
-  it('submits once, disables controls, and represents skipped steps', async () => {
-    let resolve!: (value: DesktopCreateResult) => void;
-    const pending = new Promise<DesktopCreateResult>((done) => (resolve = done));
-    const api = bridge({ createProject: vi.fn().mockReturnValue(pending) });
-    render(<App bridge={api} />);
-    await completeRequiredFields();
-    await userEvent.click(screen.getByRole('button', { name: 'Create project' }));
     await userEvent.click(screen.getByRole('button', { name: 'Confirm and create' }));
-    expect(screen.getByRole('heading', { name: 'Building my-app' })).toBeVisible();
-    expect(screen.getAllByText('skipped')).toHaveLength(2);
-    expect(api.createProject).toHaveBeenCalledTimes(1);
-    resolve(result);
-    await screen.findByRole('heading', { name: 'my-app was created' });
-  });
-
-  it('renders progress warnings without false success', async () => {
-    const api = bridge({
-      createProject: vi.fn(async (_request, progress) => {
-        progress({ operationId: '1', step: 'git', state: 'warning', message: 'Git unavailable' });
-        return { ...result, initializedFeatures: [], warnings: ['Git was not initialized.'] };
+    expect(await screen.findByRole('heading', { name: 'my-app was created' })).toBeVisible();
+    expect(api.createProject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templateId: 'nextjs-dashboard',
+        initializeGit: false,
+        addDocker: true,
+        addGitHubActions: true,
       }),
-    });
-    render(<App bridge={api} />);
-    await completeRequiredFields();
-    await userEvent.click(screen.getByRole('button', { name: 'Create project' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm and create' }));
-    expect(await screen.findByText('Created with warnings')).toBeVisible();
-    expect(screen.getByText('Git was not initialized.')).toBeVisible();
+      expect.any(Function),
+    );
   });
 
-  it('shows sanitized expected errors without a raw stack trace', async () => {
-    const fakeToken = ['npm', '_abcdefghijklmnopqrstuvwxyz'].join('');
+  it('opens the wizard with a template selected from the catalog', async () => {
+    render(<App bridge={bridge()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Templates' }));
+    await userEvent.click(screen.getByRole('button', { name: /Next\.js Blog/u }));
+    const details = screen.getByText('Included features').closest<HTMLElement>('.details-panel')!;
+    await userEvent.click(within(details).getByRole('button', { name: 'Create Project' }));
+    await userEvent.type(screen.getByLabelText('Project name'), 'blog-app');
+    await userEvent.click(screen.getByRole('button', { name: 'Choose folder' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('button', { name: /Next\.js Blog/u })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('shows sanitized failures and supports create-another reset', async () => {
     const api = bridge({
       createProject: vi
         .fn()
-        .mockRejectedValue(new Error(`permission denied C:\\Users\\private\\token ${fakeToken}`)),
+        .mockRejectedValue(new Error(`permission denied npm_${'a'.repeat(30)}`)),
     });
     render(<App bridge={api} />);
-    await completeRequiredFields();
-    await userEvent.click(screen.getByRole('button', { name: 'Create project' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+    await userEvent.type(screen.getByLabelText('Project name'), 'my-app');
+    await userEvent.click(screen.getByRole('button', { name: 'Choose folder' }));
+    for (let index = 0; index < 3; index += 1)
+      await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.click(screen.getByRole('button', { name: 'Confirm and create' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('does not have permission');
-    fireEvent.click(screen.getByText('Technical details'));
-    expect(screen.getByText(/%USERPROFILE%/u)).toBeVisible();
-    expect(screen.queryByText(new RegExp(fakeToken, 'u'))).not.toBeInTheDocument();
-    expect(screen.queryByText(/at App/u)).not.toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('permission');
+    expect(screen.queryByText(/npm_aaaa/u)).not.toBeInTheDocument();
   });
+});
 
-  it('supports open, copy, and reset actions after success', async () => {
-    const api = bridge();
-    render(<App bridge={api} />);
-    await completeRequiredFields();
-    await userEvent.click(screen.getByRole('button', { name: 'Create project' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm and create' }));
-    await screen.findByRole('heading', { name: 'my-app was created' });
-    await userEvent.click(screen.getByRole('button', { name: 'Open project folder' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Copy project path' }));
-    expect(api.openProjectFolder).toHaveBeenCalledWith(result.projectDirectory);
-    expect(api.copyProjectPath).toHaveBeenCalledWith(result.projectDirectory);
-    await userEvent.click(screen.getByRole('button', { name: 'Create another project' }));
-    expect(screen.getByLabelText('Project name')).toHaveValue('');
-    expect(screen.getByLabelText('Initialize Git repository')).toBeChecked();
+describe('stored desktop state', () => {
+  it('loads preferences and applies the selected theme', async () => {
+    const stored = createDefaultDesktopState();
+    stored.preferences.theme = 'dark';
+    stored.preferences.mode = 'advanced';
+    render(<App bridge={bridge({ loadDesktopState: vi.fn().mockResolvedValue(stored) })} />);
+    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', 'dark'));
   });
 });

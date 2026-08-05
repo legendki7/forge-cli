@@ -1,397 +1,274 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { BUILTIN_TEMPLATES, type TemplateId } from '@forgecli7/templates/catalog';
+import { CreateWizard } from './CreateWizard';
 import {
-  createRequest,
-  devCommand,
-  initialFormState,
-  initialProgress,
-  installCommand,
-  mergeProgress,
-  progressLabels,
-  sanitizeTechnicalDetails,
-  validateForm,
-  type FormState,
-} from './state';
-import type { DesktopBridge, DesktopCreateResult, ProgressEvent } from './types';
+  ActivityPage,
+  DeveloperToolsPage,
+  HomePage,
+  PluginsPage,
+  ScanProjectPage,
+  SettingsPage,
+  TemplatesPage,
+} from './pages';
+import {
+  addActivity,
+  addRecentProject,
+  createDefaultDesktopState,
+  migrateDesktopState,
+} from './persistence';
+import type {
+  ActivityEntry,
+  DesktopBridge,
+  DesktopCreateResult,
+  DesktopProjectScan,
+  NavigationPage,
+  PersistedDesktopState,
+} from './types';
 
-type View = 'form' | 'confirm' | 'creating' | 'success' | 'error';
+const navigation: readonly { id: NavigationPage; label: string; icon: string }[] = [
+  { id: 'home', label: 'Home', icon: 'H' },
+  { id: 'create', label: 'Create Project', icon: '+' },
+  { id: 'templates', label: 'Templates', icon: 'T' },
+  { id: 'scan', label: 'Scan Project', icon: 'S' },
+  { id: 'plugins', label: 'Plugins', icon: 'P' },
+  { id: 'tools', label: 'Developer Tools', icon: 'D' },
+  { id: 'activity', label: 'Activity', icon: 'A' },
+  { id: 'settings', label: 'Settings', icon: 'G' },
+];
 
 export function App({ bridge }: { bridge: DesktopBridge }) {
-  const [form, setForm] = useState<FormState>(initialFormState);
-  const [view, setView] = useState<View>('form');
-  const [progress, setProgress] = useState<ProgressEvent[]>(initialProgress(initialFormState));
-  const [result, setResult] = useState<DesktopCreateResult>();
-  const [error, setError] = useState<string>();
-  const [technicalDetails, setTechnicalDetails] = useState<string>();
-  const [locationError, setLocationError] = useState<string>();
+  const [page, setPage] = useState<NavigationPage>('home');
+  const [state, setState] = useState<PersistedDesktopState>(createDefaultDesktopState);
+  const [loaded, setLoaded] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>('nextjs-blank');
+  const [selectedProject, setSelectedProject] = useState<string>();
 
-  const errors = useMemo(() => validateForm(form), [form]);
-  const valid = Object.keys(errors).length === 0;
-  const running = view === 'creating';
-
-  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
-  }
-
-  async function selectDestination() {
-    setLocationError(undefined);
-    try {
-      const selected = await bridge.selectDestination();
-      if (selected) update('destinationDirectory', selected);
-    } catch (cause) {
-      setLocationError('The folder selector could not be opened.');
-      setTechnicalDetails(sanitizeTechnicalDetails(cause));
-    }
-  }
-
-  async function create() {
-    if (!valid || running) return;
-    setView('creating');
-    setProgress(initialProgress(form));
-    setError(undefined);
-    setTechnicalDetails(undefined);
-    try {
-      const created = await bridge.createProject(createRequest(form), (event) => {
-        setProgress((current) => mergeProgress(current, event));
+  useEffect(() => {
+    let active = true;
+    void bridge
+      .loadDesktopState()
+      .then((value) => {
+        if (active) setState(migrateDesktopState(value));
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setLoaded(true);
       });
-      setResult(created);
-      setView('success');
-    } catch (cause) {
-      setError(userMessage(cause));
-      setTechnicalDetails(sanitizeTechnicalDetails(cause));
-      setView('error');
+    return () => {
+      active = false;
+    };
+  }, [bridge]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = state.preferences.theme;
+    if (loaded) void bridge.saveDesktopState(state).catch(() => undefined);
+  }, [bridge, loaded, state]);
+
+  const recentActivity = useMemo(() => state.activity.slice(0, 5), [state.activity]);
+
+  function navigate(destination: NavigationPage) {
+    setPage(destination);
+  }
+
+  function updateState(update: (current: PersistedDesktopState) => PersistedDesktopState) {
+    setState((current) => update(current));
+  }
+
+  function record(entry: Omit<ActivityEntry, 'id' | 'timestamp'>) {
+    updateState((current) =>
+      addActivity(current, {
+        ...entry,
+        id: `${Date.now()}-${current.activity.length}`,
+        timestamp: new Date().toISOString(),
+      }),
+    );
+  }
+
+  function projectCreated(result: DesktopCreateResult) {
+    const now = new Date().toISOString();
+    updateState((current) =>
+      addActivity(
+        addRecentProject(current, {
+          name: result.projectName,
+          path: result.projectDirectory,
+          framework: result.framework,
+          packageManager: result.packageManager,
+          lastActivityAt: now,
+          activityType: 'created',
+        }),
+        {
+          id: `${Date.now()}-created`,
+          type: 'project-created',
+          projectName: result.projectName,
+          projectPath: result.projectDirectory,
+          timestamp: now,
+          result: result.warnings.length ? 'warning' : 'success',
+          message: result.warnings.length
+            ? 'Project created with warnings.'
+            : 'Project created successfully.',
+        },
+      ),
+    );
+    setSelectedProject(result.projectDirectory);
+  }
+
+  function projectScanned(scan: DesktopProjectScan) {
+    setSelectedProject(scan.directory);
+    const now = new Date().toISOString();
+    updateState((current) =>
+      addActivity(
+        addRecentProject(current, {
+          name: scan.projectName,
+          path: scan.directory,
+          framework: scan.framework,
+          packageManager: scan.packageManager,
+          lastActivityAt: now,
+          activityType: 'scanned',
+        }),
+        {
+          id: `${Date.now()}-scanned`,
+          type: 'project-scanned',
+          projectName: scan.projectName,
+          projectPath: scan.directory,
+          timestamp: now,
+          result: scan.warnings.length ? 'warning' : 'success',
+          message: 'Project scan completed.',
+        },
+      ),
+    );
+  }
+
+  function openTemplate(id: TemplateId) {
+    setSelectedTemplate(id);
+    setPage('create');
+  }
+
+  const content = (() => {
+    switch (page) {
+      case 'home':
+        return (
+          <HomePage
+            recentProjects={state.recentProjects}
+            activity={recentActivity}
+            navigate={navigate}
+            openProject={(path) => {
+              void bridge.openProjectFolder(path);
+              record({
+                type: 'folder-opened',
+                projectPath: path,
+                result: 'success',
+                message: 'Project folder opened.',
+              });
+            }}
+            scanProject={(path) => {
+              setSelectedProject(path);
+              setPage('scan');
+            }}
+            removeProject={(path) =>
+              updateState((current) => ({
+                ...current,
+                recentProjects: current.recentProjects.filter((project) => project.path !== path),
+              }))
+            }
+          />
+        );
+      case 'create':
+        return (
+          <CreateWizard
+            bridge={bridge}
+            preferences={state.preferences}
+            initialTemplateId={selectedTemplate}
+            onCreated={projectCreated}
+            onHome={() => setPage('home')}
+          />
+        );
+      case 'templates':
+        return <TemplatesPage templates={BUILTIN_TEMPLATES} onCreate={openTemplate} />;
+      case 'scan':
+        return (
+          <ScanProjectPage
+            bridge={bridge}
+            initialPath={selectedProject}
+            onScanned={projectScanned}
+            onActivity={record}
+          />
+        );
+      case 'plugins':
+        return (
+          <PluginsPage
+            bridge={bridge}
+            projectPath={selectedProject}
+            onProjectPath={setSelectedProject}
+            onScan={projectScanned}
+            onActivity={record}
+          />
+        );
+      case 'tools':
+        return <DeveloperToolsPage bridge={bridge} />;
+      case 'activity':
+        return (
+          <ActivityPage
+            entries={state.activity}
+            onClear={() => updateState((current) => ({ ...current, activity: [] }))}
+            onOpen={(path) => void bridge.openProjectFolder(path)}
+          />
+        );
+      case 'settings':
+        return (
+          <SettingsPage
+            preferences={state.preferences}
+            onChange={(preferences) => updateState((current) => ({ ...current, preferences }))}
+            onReset={() => updateState(() => createDefaultDesktopState())}
+            onClearRecent={() => updateState((current) => ({ ...current, recentProjects: [] }))}
+            onClearActivity={() => updateState((current) => ({ ...current, activity: [] }))}
+            chooseDirectory={bridge.selectDestination}
+          />
+        );
     }
-  }
+  })();
 
-  function reset() {
-    setForm(initialFormState);
-    setProgress(initialProgress(initialFormState));
-    setResult(undefined);
-    setError(undefined);
-    setTechnicalDetails(undefined);
-    setView('form');
-  }
-
-  if (view === 'success' && result) {
-    return (
-      <Shell>
-        <section className="panel result" aria-labelledby="success-title">
-          <div className="success-mark" aria-hidden="true">
-            ✓
-          </div>
-          <p className="eyebrow">Project ready</p>
-          <h2 id="success-title">{result.projectName} was created</h2>
-          <dl className="result-grid">
-            <ResultItem label="Location" value={result.projectDirectory} />
-            <ResultItem label="Framework" value="Next.js" />
-            <ResultItem label="Package manager" value={result.packageManager} />
-            <ResultItem
-              label="Features"
-              value={
-                result.initializedFeatures.length ? result.initializedFeatures.join(', ') : 'None'
-              }
-            />
-          </dl>
-          {result.warnings.length > 0 && (
-            <div className="notice warning" role="status">
-              <strong>Created with warnings</strong>
-              <ul>
-                {result.warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <div className="next-steps">
-            <h3>Next steps</h3>
-            <code>{installCommand(result.packageManager)}</code>
-            <code>{devCommand(result.packageManager)}</code>
-          </div>
-          <div className="actions wrap">
+  return (
+    <div className="desktop-shell">
+      <aside className="sidebar" data-collapsed={state.preferences.sidebarCollapsed}>
+        <div className="sidebar-brand">
+          <span>FK</span>
+          <strong>ForgeKi</strong>
+        </div>
+        <nav aria-label="Main navigation">
+          {navigation.map((item) => (
             <button
-              className="primary"
-              onClick={() => bridge.openProjectFolder(result.projectDirectory)}
+              key={item.id}
+              className={page === item.id ? 'selected' : ''}
+              aria-current={page === item.id ? 'page' : undefined}
+              aria-label={item.label}
+              title={state.preferences.sidebarCollapsed ? item.label : undefined}
+              onClick={() => navigate(item.id)}
             >
-              Open project folder
+              <span aria-hidden="true">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
             </button>
-            <button onClick={() => bridge.copyProjectPath(result.projectDirectory)}>
-              Copy project path
-            </button>
-            <button onClick={reset}>Create another project</button>
-          </div>
-        </section>
-      </Shell>
-    );
-  }
-
-  if (view === 'creating') {
-    return (
-      <Shell>
-        <section className="panel" aria-labelledby="progress-title" aria-live="polite">
-          <p className="eyebrow">Creating project</p>
-          <h2 id="progress-title">Building {form.projectName.trim()}</h2>
-          <p className="muted">Keep ForgeKi open while the project files are prepared.</p>
-          <ol className="progress-list">
-            {progress.map((item) => (
-              <li key={item.step} data-state={item.state}>
-                <span className="status-symbol" aria-hidden="true">
-                  {statusSymbol(item.state)}
-                </span>
-                <span>
-                  <strong>{progressLabels[item.step]}</strong>
-                  <small>{item.message}</small>
-                </span>
-                <span className="status-text">{item.state}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </Shell>
-    );
-  }
-
-  if (view === 'error') {
-    return (
-      <Shell>
-        <section className="panel result" aria-labelledby="error-title">
-          <div className="error-mark" aria-hidden="true">
-            !
-          </div>
-          <p className="eyebrow">Creation stopped</p>
-          <h2 id="error-title">Project could not be created</h2>
-          <p role="alert">{error}</p>
-          {technicalDetails && (
-            <details>
-              <summary>Technical details</summary>
-              <pre>{technicalDetails}</pre>
-            </details>
-          )}
-          <div className="actions">
-            <button className="primary" onClick={() => setView('form')}>
-              Review settings
-            </button>
-          </div>
-        </section>
-      </Shell>
-    );
-  }
-
-  return (
-    <Shell>
-      <section className="panel" aria-labelledby="form-title">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">New project</p>
-            <h2 id="form-title">Configure your Next.js app</h2>
-          </div>
-          <span className="framework-badge">Next.js · TypeScript · App Router</span>
-        </div>
-
-        <div className="form-grid">
-          <label className="field">
-            <span>Project name</span>
-            <input
-              aria-label="Project name"
-              value={form.projectName}
-              placeholder="my-app"
-              autoFocus
-              aria-invalid={Boolean(form.projectName && errors.projectName)}
-              aria-describedby="project-name-error"
-              disabled={view === 'confirm'}
-              onChange={(event) => update('projectName', event.target.value)}
-            />
-            <small id="project-name-error" className="field-message">
-              {form.projectName ? errors.projectName : 'Use a lowercase npm-compatible name.'}
-            </small>
-          </label>
-
-          <div className="field">
-            <span>Project location</span>
-            <div className="location-picker">
-              <output aria-label="Selected project location">
-                {form.destinationDirectory || 'No folder selected'}
-              </output>
-              <button type="button" onClick={selectDestination} disabled={view === 'confirm'}>
-                Choose folder
-              </button>
-            </div>
-            <small className="field-message error">{locationError ?? errors.destination}</small>
-          </div>
-
-          <div className="field static-field">
-            <span>Framework</span>
-            <strong>Next.js</strong>
-            <small>TypeScript with the App Router</small>
-          </div>
-
-          <fieldset className="field manager-field" disabled={view === 'confirm'}>
-            <legend>Package manager</legend>
-            <div className="segmented">
-              {(['pnpm', 'npm', 'yarn', 'bun'] as const).map((manager) => (
-                <label key={manager}>
-                  <input
-                    type="radio"
-                    name="package-manager"
-                    value={manager}
-                    checked={form.packageManager === manager}
-                    onChange={() => update('packageManager', manager)}
-                  />
-                  <span>{manager === 'yarn' ? 'Yarn' : manager === 'bun' ? 'Bun' : manager}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        </div>
-
-        <fieldset className="options" disabled={view === 'confirm'}>
-          <legend>Options</legend>
-          <Option
-            label="Initialize Git repository"
-            description="Run a local git init when Git is available."
-            checked={form.initializeGit}
-            onChange={(checked) => update('initializeGit', checked)}
-          />
-          <Option
-            label="Add Docker configuration"
-            description="Create a Dockerfile and .dockerignore safely."
-            checked={form.addDocker}
-            onChange={(checked) => update('addDocker', checked)}
-          />
-          <Option
-            label="Add GitHub Actions CI"
-            description="Create a project-aware validation workflow."
-            checked={form.addGitHubActions}
-            onChange={(checked) => update('addGitHubActions', checked)}
-          />
-        </fieldset>
-
-        {view === 'confirm' ? (
-          <Confirmation form={form} onCancel={() => setView('form')} onConfirm={create} />
-        ) : (
-          <div className="actions end">
-            <button className="primary" disabled={!valid} onClick={() => setView('confirm')}>
-              Create project
-            </button>
-          </div>
-        )}
-      </section>
-    </Shell>
-  );
-}
-
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="app-shell">
-      <header className="product-header">
-        <div className="brand-mark" aria-hidden="true">
-          FK
-        </div>
-        <div>
-          <h1>ForgeKi</h1>
-          <p>Create development projects visually.</p>
-        </div>
-      </header>
-      {children}
-      <footer>No telemetry · No network access · Your files stay local</footer>
-    </main>
-  );
-}
-
-function Option({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className="option">
-      <span>
-        <strong>{label}</strong>
-        <small>{description}</small>
-      </span>
-      <input
-        aria-label={label}
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-    </label>
-  );
-}
-
-function Confirmation({
-  form,
-  onCancel,
-  onConfirm,
-}: {
-  form: FormState;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <section className="confirmation" aria-labelledby="confirmation-title">
-      <div>
-        <p className="eyebrow">Confirm creation</p>
-        <h3 id="confirmation-title">Review project configuration</h3>
-      </div>
-      <dl>
-        <ResultItem label="Project" value={form.projectName.trim()} />
-        <ResultItem label="Framework" value="Next.js" />
-        <ResultItem label="Package manager" value={form.packageManager} />
-        <ResultItem label="Location" value={form.destinationDirectory} />
-        <ResultItem label="Git" value={enabled(form.initializeGit)} />
-        <ResultItem label="Docker" value={enabled(form.addDocker)} />
-        <ResultItem label="GitHub Actions" value={enabled(form.addGitHubActions)} />
-      </dl>
-      <p className="muted">No files are created until you confirm.</p>
-      <div className="actions end">
-        <button onClick={onCancel}>Back</button>
-        <button className="primary" onClick={onConfirm}>
-          Confirm and create
+          ))}
+        </nav>
+        <button
+          className="collapse-button"
+          aria-label={state.preferences.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          onClick={() =>
+            updateState((current) => ({
+              ...current,
+              preferences: {
+                ...current.preferences,
+                sidebarCollapsed: !current.preferences.sidebarCollapsed,
+              },
+            }))
+          }
+        >
+          <span aria-hidden="true">{state.preferences.sidebarCollapsed ? '›' : '‹'}</span>
+          <span className="nav-label">Collapse</span>
         </button>
-      </div>
-    </section>
-  );
-}
-
-function ResultItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
+      </aside>
+      <main className="workspace" data-page={page}>
+        {content}
+      </main>
     </div>
   );
-}
-function enabled(value: boolean) {
-  return value ? 'Enabled' : 'Disabled';
-}
-function statusSymbol(state: ProgressEvent['state']) {
-  return state === 'succeeded'
-    ? '✓'
-    : state === 'failed'
-      ? '×'
-      : state === 'warning'
-        ? '!'
-        : state === 'skipped'
-          ? '–'
-          : state === 'running'
-            ? '•'
-            : '○';
-}
-
-function userMessage(cause: unknown): string {
-  const message = cause instanceof Error ? cause.message : String(cause);
-  if (/destination.*not empty/iu.test(message))
-    return 'The destination folder already contains files.';
-  if (/permission|access.*denied/iu.test(message))
-    return 'ForgeKi does not have permission to create files in that location.';
-  if (/unsafe|symbolic|traversal/iu.test(message))
-    return 'The selected project path is not safe to use.';
-  if (/bridge|sidecar|worker/iu.test(message))
-    return 'ForgeKi could not communicate with the project creation service.';
-  return 'An unexpected filesystem or project creation error occurred.';
 }

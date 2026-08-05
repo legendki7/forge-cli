@@ -6,8 +6,8 @@ packages for templates and plugins.
 
 ForgeKi now has two local interfaces over the same tested project engine:
 
-- **ForgeKi Desktop** is a graphical desktop application for creating development projects without
-  using a terminal.
+- **ForgeKi Desktop** is a local developer studio for creating, inspecting, and configuring
+  development projects without using a terminal.
 - **ForgeKi CLI** is the `forge` terminal interface for automation and advanced users.
 
 ForgeKi Desktop is an MVP under active development. Native installers are not publicly available,
@@ -36,6 +36,8 @@ and production readiness or cross-platform support is not yet claimed.
 - Fast builds with tsup and tests with Vitest
 - Shared ESLint and Prettier configuration
 - Changesets-ready release workflow and GitHub Actions CI
+- Five deterministic, offline Next.js templates shared by CLI and Desktop
+- Local project scanning, rule-based recommendations, developer-tool checks, and activity history
 
 ## Requirements
 
@@ -113,10 +115,25 @@ command parsing.
 
 ## ForgeKi Desktop
 
-The desktop MVP creates Next.js TypeScript App Router projects with pnpm, npm, Yarn, or Bun metadata.
-It supports optional Git initialization, Docker configuration, and GitHub Actions CI without
-installing dependencies or accessing the network. Folder selection, progress, confirmation, safe
-open-folder behavior, warnings, and package-manager-specific next steps are presented graphically.
+ForgeKi Desktop opens on a persistent local application shell with Home, Create Project, Templates,
+Scan Project, Plugins, Developer Tools, Activity, and Settings pages. Its five-step creation wizard
+uses the same project-name validation, scaffolder, detection engine, and trusted built-in plugins as
+the CLI. It never installs project dependencies.
+
+Built-in templates are Blank Next.js App, Next.js Dashboard, Next.js Blog, Next.js Portfolio, and
+Next.js Landing Page. They use TypeScript, App Router, local CSS, deterministic content, and no
+remote runtime assets. The Templates page supports local search, category and difficulty filters,
+details, and preselection into the wizard.
+
+The scanner reports framework, language, package manager, scripts, recognized files, dependency
+counts, warnings, Docker state, and GitHub Actions state. Recommendations are deterministic rules;
+ForgeKi does not claim vulnerability findings. Docker and GitHub Actions can be applied only after a
+file preview and confirmation, with existing files preserved.
+
+Developer-tool checks are requested explicitly and limited to a backend allowlist. Settings,
+recent projects, and the latest 200 activity entries are stored locally in the Tauri application
+data directory. Beginner mode is concise; Advanced mode adds safe metadata, expected scripts, file
+previews, and configuration details without changing validation.
 
 ```bash
 pnpm desktop:dev
@@ -128,6 +145,9 @@ pnpm desktop:build
 Desktop development requires Rust and the platform prerequisites documented in
 [the desktop guide](docs/desktop.md). `desktop:check` and `desktop:test` are headless; the native
 build command reports missing prerequisites and never installs them automatically.
+
+ForgeKi Desktop requires no account, API key, external API, cloud service, analytics, telemetry, or
+AI feature. Project source contents are not persisted or uploaded.
 
 ## Plugin API
 
@@ -208,6 +228,16 @@ Contributions are welcome. Keep new behavior in the package that owns the releva
 tests for public behavior, and ensure `pnpm lint`, `pnpm test`, and `pnpm build` pass before opening
 a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) and
 [`docs/architecture.md`](docs/architecture.md) for package boundaries.
+
+## Roadmap
+
+- Community plugin marketplace
+- Visual stack builder
+- Additional frameworks
+- macOS native validation
+- Linux native validation
+- Signed Windows installers
+- Automatic updates
 
 ### Beta feedback
 

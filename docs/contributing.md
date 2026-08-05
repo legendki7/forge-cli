@@ -8,9 +8,20 @@
 Keep package APIs explicit, avoid importing package internals, and add tests at the narrowest useful
 boundary.
 
-Next.js template files are rendered in `packages/templates/src/nextjs/template.ts`. Keep rendering
-deterministic, centralize dependency versions, terminate generated text files with newlines, and never
-include timestamps, absolute paths, fetched content, or fabricated lockfile data.
+Next.js template foundations are rendered in `packages/templates/src/nextjs/template.ts`; the typed
+catalog and specialized local content live in `packages/templates/src/catalog.ts`. Keep rendering
+deterministic, centralize dependency versions, terminate generated text files with newlines, and
+never include timestamps, absolute paths, fetched content, remote assets, or fabricated lockfiles.
+
+Desktop pages belong in the React application, while detection, templates, plugins, and filesystem
+rules remain in shared packages or the Node worker. Native commands must be allowlisted, validate
+typed payloads, require a folder selected through the native picker, sanitize output, and never
+accept raw executable names or shell strings. Persistence changes require schema migration,
+corruption recovery, bounded-history, and sensitive-value tests.
+
+For desktop work run `pnpm desktop:check`, `pnpm desktop:test`, and, when native prerequisites are
+available, `pnpm desktop:build`. Use temporary directories, in-memory storage, fake process
+executors, and mocked native adapters in tests; never touch real user projects.
 
 Prompt flows belong in the CLI package and must depend on `CreatePromptAdapter`, not direct Inquirer
 calls. Keep question order deterministic, test default and explicit-option behavior with a fake

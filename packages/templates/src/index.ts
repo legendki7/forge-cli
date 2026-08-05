@@ -12,3 +12,16 @@ export {
   renderNextjsTemplate,
   type RenderedTemplateFile,
 } from './nextjs/template.js';
+export {
+  BUILTIN_TEMPLATES,
+  getBuiltinTemplate,
+  isTemplateId,
+  renderBuiltinTemplate,
+  type ForgeKiTemplate,
+  type RenderedTemplate,
+  type TemplateCategory,
+  type TemplateDifficulty,
+  type TemplateId,
+  type TemplateOptions,
+  type TemplateValidationResult,
+} from './catalog.js';

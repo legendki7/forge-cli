@@ -9,10 +9,12 @@
     "paths": {
       "@forgecli7/core": ["packages/core/src/index.ts"],
       "@forgecli7/core/project-name": ["packages/core/src/project-name.ts"],
+      "@forgecli7/core/package-managers": ["packages/core/src/package-managers.ts"],
       "@forgecli7/plugin-docker": ["packages/plugins/plugin-docker/src/index.ts"],
       "@forgecli7/plugin-github-actions": ["packages/plugins/plugin-github-actions/src/index.ts"],
       "@forgecli7/plugins": ["packages/plugins/src/index.ts"],
-      "@forgecli7/templates": ["packages/templates/src/index.ts"]
+      "@forgecli7/templates": ["packages/templates/src/index.ts"],
+      "@forgecli7/templates/catalog": ["packages/templates/src/catalog.ts"]
     },
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },

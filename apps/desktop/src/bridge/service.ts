@@ -1,28 +1,39 @@
 import path from 'node:path';
 import { detectProject, validateProjectName, type SupportedPackageManager } from '@forgecli7/core';
-import { loadPlugins } from '@forgecli7/plugins';
-import { createProject, CreateProjectError } from '@forgecli7/templates';
+import {
+  applyBuiltinPlugin,
+  inspectBuiltinPlugins,
+  isBuiltinPluginId,
+  loadPlugins,
+} from '@forgecli7/plugins';
+import { createProject, CreateProjectError, isTemplateId } from '@forgecli7/templates';
+import { checkDeveloperTools } from './developer-tools.js';
 import type {
   DesktopCreateRequest,
   DesktopCreateResult,
+  DesktopProjectScan,
+  PluginApplyResponse,
   ProgressEvent,
   ProgressStepId,
 } from '../types';
 
 export interface WorkerEnvelope {
   operationId: string;
+  operation?: 'create' | 'scan' | 'inspect-plugins' | 'apply-plugin' | 'check-tools';
   request: unknown;
 }
 
 export type WorkerMessage =
   | { type: 'progress'; payload: ProgressEvent }
   | { type: 'result'; payload: DesktopCreateResult }
+  | { type: 'operation-result'; payload: unknown }
   | { type: 'error'; payload: { code: string; message: string; details?: string } };
 
 const requestKeys = new Set([
   'projectName',
   'destinationDirectory',
   'framework',
+  'templateId',
   'packageManager',
   'initializeGit',
   'addDocker',
@@ -33,6 +44,11 @@ export async function handleWorkerEnvelope(
   envelope: WorkerEnvelope,
   send: (message: WorkerMessage) => void,
 ): Promise<void> {
+  const operation = envelope.operation ?? 'create';
+  if (operation !== 'create') {
+    await handleOperation(operation, envelope.request, send);
+    return;
+  }
   let currentStep: ProgressStepId = 'validate';
   const progress = (step: ProgressStepId, state: ProgressEvent['state'], message: string) => {
     if (state === 'running') currentStep = step;
@@ -83,6 +99,7 @@ export async function handleWorkerEnvelope(
         projectName: request.projectName,
         projectDirectory: result.projectDirectory,
         framework: 'nextjs',
+        templateId: request.templateId,
         packageManager: request.packageManager,
         initializedFeatures: [
           ...(result.gitInitialized ? ['Git'] : []),
@@ -121,6 +138,8 @@ export function validateRequest(value: unknown): DesktopCreateRequest {
   }
   if (input.framework !== 'nextjs')
     throw new CreateProjectError('UNSUPPORTED_FRAMEWORK', 'Only Next.js is supported.');
+  const templateId = input.templateId ?? 'nextjs-blank';
+  if (!isTemplateId(templateId)) invalidPayload();
   if (!isPackageManager(input.packageManager)) invalidPayload();
   const initializeGit = readBoolean(input, 'initializeGit');
   const addDocker = readBoolean(input, 'addDocker');
@@ -129,11 +148,139 @@ export function validateRequest(value: unknown): DesktopCreateRequest {
     projectName,
     destinationDirectory: input.destinationDirectory,
     framework: 'nextjs',
+    templateId,
     packageManager: input.packageManager,
     initializeGit,
     addDocker,
     addGitHubActions,
   };
+}
+
+export async function scanProjectDirectory(directory: string): Promise<DesktopProjectScan> {
+  const safeDirectory = validateAbsoluteDirectory(directory);
+  const project = await detectProject(safeDirectory);
+  const plugins = await inspectBuiltinPlugins(safeDirectory);
+  const recommendations = [];
+  const docker = plugins.find(({ id }) => id === 'docker');
+  const actions = plugins.find(({ id }) => id === 'github-actions');
+  if (docker?.status === 'available') {
+    recommendations.push({
+      id: 'docker-missing',
+      severity: 'info' as const,
+      message: 'Docker configuration is missing.',
+      pluginId: 'docker' as const,
+    });
+  }
+  if (actions?.status === 'available') {
+    recommendations.push({
+      id: 'github-actions-missing',
+      severity: 'info' as const,
+      message: 'GitHub Actions CI is missing.',
+      pluginId: 'github-actions' as const,
+    });
+  }
+  if (!Object.keys(project.scripts).some((script) => /^(?:test|lint|typecheck)$/u.test(script))) {
+    recommendations.push({
+      id: 'test-script-missing',
+      severity: 'warning' as const,
+      message: 'No recognized test, lint, or typecheck script was found.',
+    });
+  }
+  if (project.warnings.some((warning) => warning.startsWith('Multiple package-manager'))) {
+    recommendations.push({
+      id: 'multiple-lockfiles',
+      severity: 'warning' as const,
+      message: 'Multiple package-manager lockfiles were detected.',
+    });
+  }
+  if (project.language === 'typescript') {
+    recommendations.push({
+      id: 'typescript-present',
+      severity: 'info' as const,
+      message: 'TypeScript configuration is present.',
+    });
+  }
+  return {
+    ...project,
+    projectName: project.projectName ?? path.basename(safeDirectory),
+    plugins,
+    recommendations,
+  };
+}
+
+async function handleOperation(
+  operation: Exclude<NonNullable<WorkerEnvelope['operation']>, 'create'>,
+  request: unknown,
+  send: (message: WorkerMessage) => void,
+): Promise<void> {
+  try {
+    let result: unknown;
+    if (operation === 'scan') {
+      result = await scanProjectDirectory(readDirectoryRequest(request));
+    } else if (operation === 'inspect-plugins') {
+      const directory = readOptionalDirectoryRequest(request);
+      result = await inspectBuiltinPlugins(directory);
+    } else if (operation === 'apply-plugin') {
+      const input = readPluginRequest(request);
+      const applied = await applyBuiltinPlugin(input.projectDirectory, input.pluginId);
+      result = {
+        ...applied,
+        scan: await scanProjectDirectory(input.projectDirectory),
+      } satisfies PluginApplyResponse;
+    } else {
+      if (!isEmptyRecord(request)) invalidPayload();
+      result = await checkDeveloperTools();
+    }
+    send({ type: 'operation-result', payload: result });
+  } catch (error) {
+    send({ type: 'error', payload: publicError(error) });
+  }
+}
+
+function readDirectoryRequest(value: unknown): string {
+  if (!isRecord(value) || Object.keys(value).length !== 1) invalidPayload();
+  return validateAbsoluteDirectory(value.projectDirectory);
+}
+
+function readOptionalDirectoryRequest(value: unknown): string | undefined {
+  if (!isRecord(value) || Object.keys(value).some((key) => key !== 'projectDirectory')) {
+    invalidPayload();
+  }
+  return value.projectDirectory === undefined
+    ? undefined
+    : validateAbsoluteDirectory(value.projectDirectory);
+}
+
+function readPluginRequest(value: unknown): {
+  projectDirectory: string;
+  pluginId: 'docker' | 'github-actions';
+} {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some((key) => key !== 'projectDirectory' && key !== 'pluginId') ||
+    !isBuiltinPluginId(value.pluginId)
+  ) {
+    invalidPayload();
+  }
+  return {
+    projectDirectory: validateAbsoluteDirectory(value.projectDirectory),
+    pluginId: value.pluginId,
+  };
+}
+
+function validateAbsoluteDirectory(value: unknown): string {
+  if (typeof value !== 'string' || !path.isAbsolute(value) || value.includes('\0')) {
+    throw new Error('A selected absolute project directory is required.');
+  }
+  return value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isEmptyRecord(value: unknown): boolean {
+  return isRecord(value) && Object.keys(value).length === 0;
 }
 
 function reportPlugin(

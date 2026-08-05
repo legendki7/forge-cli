@@ -22,7 +22,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
-      - run: pnpm desktop:check
+      - name: Desktop types, tests, and secure configuration
+        run: pnpm desktop:check
 
   test:
     name: Test on Node.js ${{ matrix.node }}
@@ -39,7 +40,8 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
+      - name: Workspace, CLI, frontend, bridge, storage, scanner, and tool tests
+        run: pnpm test
 
   package:
     name: Build and packed-install smoke test

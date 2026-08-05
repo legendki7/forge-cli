@@ -18,7 +18,7 @@ import {
   type ForgePlugin,
   type SupportedPackageManager,
 } from '@forgecli7/core';
-import { renderNextjsTemplate } from './nextjs/template.js';
+import { isTemplateId, renderBuiltinTemplate, type TemplateId } from './catalog.js';
 
 export interface ProcessResult {
   exitCode: number;
@@ -37,6 +37,7 @@ export interface CreateProjectOptions {
   initializeGit: boolean;
   addDocker: boolean;
   addGitHubActions: boolean;
+  templateId?: TemplateId;
   plugins?: readonly ForgePlugin[];
   processExecutor?: ProcessExecutor;
 }
@@ -107,7 +108,16 @@ export async function createProject(options: CreateProjectOptions): Promise<Crea
   }
 
   const destinationState = await inspectDestination(destination);
-  const templateFiles = renderNextjsTemplate(options.projectName, options.packageManager);
+  const templateId = options.templateId ?? 'nextjs-blank';
+  if (!isTemplateId(templateId)) {
+    throw new CreateProjectError('UNSUPPORTED_FRAMEWORK', 'The selected template is unsupported.');
+  }
+  const templateFiles = (
+    await renderBuiltinTemplate(templateId, {
+      projectName: options.projectName,
+      packageManager: options.packageManager,
+    })
+  ).files;
   const warnings: string[] = [];
   const appliedPlugins: string[] = [];
   let gitInitialized = false;

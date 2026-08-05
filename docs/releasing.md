@@ -66,6 +66,12 @@ only by the manually dispatched desktop workflow for maintainer testing. That wo
 binaries, create a GitHub release, or make installers public. Platform support must not be claimed
 until maintainers have tested the corresponding uploaded artifact.
 
+Before a desktop candidate is shared with maintainers, verify navigation, theme persistence,
+Dashboard-template creation, project scanning, built-in plugin application, allowlisted developer
+tool checks, activity persistence, and settings persistence after restart. Use pnpm with Git disabled
+and Docker plus GitHub Actions enabled for the native creation smoke test. Delete the generated test
+project afterward. Installer output remains unsigned and private; do not create a GitHub release.
+
 ### Partial publication recovery
 
 Publishing coordinated npm packages is sequential rather than atomic. If one package fails after

@@ -4,6 +4,12 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   resolve: {
     alias: {
+      '@forgecli7/core/package-managers': fileURLToPath(
+        new URL('./packages/core/src/package-managers.ts', import.meta.url),
+      ),
+      '@forgecli7/core/project-name': fileURLToPath(
+        new URL('./packages/core/src/project-name.ts', import.meta.url),
+      ),
       '@forgecli7/core': fileURLToPath(new URL('./packages/core/src/index.ts', import.meta.url)),
       '@forgecli7/plugin-docker': fileURLToPath(
         new URL('./packages/plugins/plugin-docker/src/index.ts', import.meta.url),

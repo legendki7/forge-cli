@@ -9,6 +9,9 @@ export default defineConfig({
       '@forgecli7/core/project-name': fileURLToPath(
         new URL('../../packages/core/src/project-name.ts', import.meta.url),
       ),
+      '@forgecli7/core/package-managers': fileURLToPath(
+        new URL('../../packages/core/src/package-managers.ts', import.meta.url),
+      ),
       '@forgecli7/core': fileURLToPath(
         new URL('../../packages/core/src/index.ts', import.meta.url),
       ),
@@ -20,6 +23,9 @@ export default defineConfig({
       ),
       '@forgecli7/plugins': fileURLToPath(
         new URL('../../packages/plugins/src/index.ts', import.meta.url),
+      ),
+      '@forgecli7/templates/catalog': fileURLToPath(
+        new URL('../../packages/templates/src/catalog.ts', import.meta.url),
       ),
       '@forgecli7/templates': fileURLToPath(
         new URL('../../packages/templates/src/index.ts', import.meta.url),

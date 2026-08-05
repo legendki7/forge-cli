@@ -1,3 +1,5 @@
+import type { Framework as DetectedFramework } from './project-detection.js';
+
 export type ForgeCommandName = 'create' | 'add' | 'check';
 
 export interface PlaceholderResult {
@@ -43,6 +45,12 @@ export interface ForgePlugin {
   id: string;
   name: string;
   description: string;
+  /** Version derived from the package that owns the plugin when available. */
+  version?: string;
+  /** Frameworks the trusted plugin is designed to configure. */
+  supportedFrameworks?: readonly DetectedFramework[];
+  /** Relative paths managed by this plugin. */
+  managedFiles?: readonly string[];
   detect(context: PluginContext): Promise<PluginDetectionResult>;
   apply(context: PluginContext): Promise<PluginApplyResult>;
 }

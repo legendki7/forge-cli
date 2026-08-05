@@ -2,7 +2,7 @@ import {
   packageManagerCommand,
   SUPPORTED_PACKAGE_MANAGER_VERSIONS,
   type SupportedPackageManager,
-} from '@forgecli7/core';
+} from '@forgecli7/core/package-managers';
 
 export interface RenderedTemplateFile {
   path: string;

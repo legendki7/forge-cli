@@ -10,6 +10,7 @@ const config = JSON.parse(readFileSync(path.join(tauriRoot, 'tauri.conf.json'), 
 const capability = JSON.parse(
   readFileSync(path.join(tauriRoot, 'capabilities', 'default.json'), 'utf8'),
 );
+const rustBridge = readFileSync(path.join(tauriRoot, 'src', 'lib.rs'), 'utf8');
 const failures = [];
 
 if (config.productName !== 'ForgeKi') failures.push('productName must be ForgeKi.');
@@ -34,6 +35,27 @@ if (!config.bundle?.externalBin?.includes('binaries/forgeki-worker')) {
 }
 if (capability.permissions.some((permission) => String(permission).startsWith('shell:'))) {
   failures.push('the frontend must not receive shell permissions.');
+}
+if (capability.permissions.some((permission) => permission !== 'core:default')) {
+  failures.push('the main window capability must remain core-only.');
+}
+if (!config.app?.security?.csp) failures.push('the desktop content security policy is missing.');
+for (const command of [
+  'select_destination',
+  'create_project',
+  'scan_project',
+  'inspect_builtin_plugins',
+  'apply_builtin_plugin',
+  'check_developer_tools',
+  'load_desktop_state',
+  'save_desktop_state',
+  'open_project_folder',
+  'copy_project_path',
+]) {
+  if (!rustBridge.includes(command)) failures.push(`native command ${command} is missing.`);
+}
+if (/Command::new\s*\(\s*(?:request|path|plugin)/u.test(rustBridge)) {
+  failures.push('the native bridge must not construct frontend-controlled executable commands.');
 }
 for (const relative of [
   'Cargo.toml',

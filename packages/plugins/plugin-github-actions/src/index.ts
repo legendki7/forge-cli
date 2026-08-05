@@ -9,6 +9,7 @@ import {
   type PluginDetectionResult,
 } from '@forgecli7/core';
 import { generateWorkflow, recognizedScripts } from './workflow.js';
+import packageMetadata from '../package.json' with { type: 'json' };
 
 export const WORKFLOW_PATH = '.github/workflows/ci.yml';
 
@@ -117,6 +118,9 @@ export const githubActionsPlugin: ForgePlugin = {
   id: 'github-actions',
   name: 'GitHub Actions',
   description: 'Add project-aware GitHub Actions continuous integration.',
+  version: packageMetadata.version,
+  supportedFrameworks: ['nextjs', 'react-vite', 'express', 'node'],
+  managedFiles: [WORKFLOW_PATH],
   detect,
   apply,
 };
