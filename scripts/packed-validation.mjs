@@ -120,10 +120,10 @@ async function validatePublicImports(installationDirectory, runner) {
   writeFileSync(
     consumer,
     [
-      "import { validateProjectName } from '@forgecli/core';",
-      "import { renderNextjsTemplate } from '@forgecli/templates';",
-      "import { dockerPlugin } from '@forgecli/plugin-docker';",
-      "import { githubActionsPlugin } from '@forgecli/plugin-github-actions';",
+      "import { validateProjectName } from '@forgecli7/core';",
+      "import { renderNextjsTemplate } from '@forgecli7/templates';",
+      "import { dockerPlugin } from '@forgecli7/plugin-docker';",
+      "import { githubActionsPlugin } from '@forgecli7/plugin-github-actions';",
       "if (!validateProjectName('consumer-app').valid) throw new Error('core export failed');",
       "if (renderNextjsTemplate('consumer-app', 'pnpm').length === 0) throw new Error('templates export failed');",
       "if (dockerPlugin.id !== 'docker') throw new Error('Docker export failed');",

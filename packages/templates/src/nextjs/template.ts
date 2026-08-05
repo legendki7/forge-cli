@@ -2,7 +2,7 @@ import {
   packageManagerCommand,
   SUPPORTED_PACKAGE_MANAGER_VERSIONS,
   type SupportedPackageManager,
-} from '@forgecli/core';
+} from '@forgecli7/core';
 
 export interface RenderedTemplateFile {
   path: string;
@@ -98,11 +98,11 @@ export function renderNextjsTemplate(
     file('public/.gitkeep', ''),
     file(
       'src/app/layout.tsx',
-      "import type { Metadata } from 'next';\nimport type { ReactNode } from 'react';\nimport './globals.css';\n\nexport const metadata: Metadata = {\n  title: 'ForgeCLI App',\n  description: 'Created with ForgeCLI',\n};\n\nexport default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {\n  return (\n    <html lang=\"en\">\n      <body>{children}</body>\n    </html>\n  );\n}\n",
+      "import type { Metadata } from 'next';\nimport type { ReactNode } from 'react';\nimport './globals.css';\n\nexport const metadata: Metadata = {\n  title: 'ForgeKi App',\n  description: 'Created with ForgeKi',\n};\n\nexport default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {\n  return (\n    <html lang=\"en\">\n      <body>{children}</body>\n    </html>\n  );\n}\n",
     ),
     file(
       'src/app/page.tsx',
-      `export default function Home() {\n  return (\n    <main>\n      <section>\n        <p>ForgeCLI</p>\n        <h1>${escapeJsx(projectName)}</h1>\n        <p>Your Next.js project is ready.</p>\n      </section>\n    </main>\n  );\n}\n`,
+      `export default function Home() {\n  return (\n    <main>\n      <section>\n        <p>ForgeKi</p>\n        <h1>${escapeJsx(projectName)}</h1>\n        <p>Your Next.js project is ready.</p>\n      </section>\n    </main>\n  );\n}\n`,
     ),
     file(
       'src/app/globals.css',
@@ -114,7 +114,7 @@ export function renderNextjsTemplate(
 
 function renderReadme(projectName: string, packageManager: SupportedPackageManager): string {
   const install = packageManager === 'npm' ? 'npm install' : `${packageManager} install`;
-  return `# ${projectName}\n\nCreated with ForgeCLI using Next.js, TypeScript, and the App Router.\n\n## Commands\n\n\`\`\`bash\n${install}\n${packageManagerCommand(packageManager, 'dev')}\n${packageManagerCommand(packageManager, 'build')}\n${packageManagerCommand(packageManager, 'lint')}\n${packageManagerCommand(packageManager, 'typecheck')}\n\`\`\`\n`;
+  return `# ${projectName}\n\nCreated with ForgeKi using Next.js, TypeScript, and the App Router.\n\n## Commands\n\n\`\`\`bash\n${install}\n${packageManagerCommand(packageManager, 'dev')}\n${packageManagerCommand(packageManager, 'build')}\n${packageManagerCommand(packageManager, 'lint')}\n${packageManagerCommand(packageManager, 'typecheck')}\n\`\`\`\n`;
 }
 
 function file(path: string, content: string): RenderedTemplateFile {

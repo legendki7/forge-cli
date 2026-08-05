@@ -1,5 +1,5 @@
 {
-  "name": "forge-cli-monorepo",
+  "name": "forgeki-monorepo",
   "version": "0.1.0",
   "private": true,
   "description": "A modular CLI foundation for scaffolding and configuring development projects.",
@@ -18,7 +18,7 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @forgecli/cli dev",
+    "dev": "pnpm --filter @forgecli7/cli dev",
     "build": "pnpm -r --sort build",
     "lint": "eslint .",
     "format": "prettier --write .",

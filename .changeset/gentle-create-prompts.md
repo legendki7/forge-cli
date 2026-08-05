@@ -1,5 +1,5 @@
 ---
-'@forgecli/cli': minor
+'@forgecli7/cli': minor
 ---
 
 Add an interactive `forge create` wizard with partial-option prompting, a confirmation summary,

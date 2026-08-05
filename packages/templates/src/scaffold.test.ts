@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { detectProject, type ForgePlugin, type SupportedPackageManager } from '@forgecli/core';
+import { detectProject, type ForgePlugin, type SupportedPackageManager } from '@forgecli7/core';
 import {
   createProject,
   CreateProjectError,

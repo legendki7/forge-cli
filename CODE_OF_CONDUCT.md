@@ -1,6 +1,6 @@
 # Code of Conduct
 
-ForgeCLI contributors and maintainers pledge to provide a welcoming, respectful, and harassment-free
+ForgeKi contributors and maintainers pledge to provide a welcoming, respectful, and harassment-free
 community for everyone.
 
 Be considerate, give constructive technical feedback, respect differing experiences, and focus on

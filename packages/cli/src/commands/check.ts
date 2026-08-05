@@ -5,7 +5,7 @@ import {
   type Framework,
   type PackageManager,
   type ProjectLanguage,
-} from '@forgecli/core';
+} from '@forgecli7/core';
 import type { CommandContext } from '../context.js';
 
 const frameworkLabels: Record<Framework, string> = {
@@ -40,7 +40,7 @@ export function registerCheckCommand(program: Command, context: CommandContext):
       const project =
         result.projectName ?? (result.framework === 'unknown' ? 'Not detected' : 'Unnamed');
       const lines = [
-        chalk.bold('ForgeCLI project report'),
+        chalk.bold('ForgeKi project report'),
         '',
         `Project: ${project}`,
         `Framework: ${frameworkLabels[result.framework]}`,

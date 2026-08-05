@@ -107,7 +107,7 @@ function validateDocumentationIdentity(repositoryRoot) {
   for (const file of files) {
     const content = readFileSync(path.join(repositoryRoot, file), 'utf8');
     for (const match of content.matchAll(/npm install --global\s+([^\s`]+)/gu)) {
-      if (!match[1].startsWith('@forgecli/cli')) {
+      if (!match[1].startsWith('@forgecli7/cli')) {
         throw new Error(`${file} documents an inconsistent installation package: ${match[1]}`);
       }
     }

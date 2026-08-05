@@ -1,3 +1,3 @@
-# @forgecli/plugins
+# @forgecli7/plugins
 
-The built-in ForgeCLI plugin registry and loader.
+The built-in ForgeKi plugin registry and loader.

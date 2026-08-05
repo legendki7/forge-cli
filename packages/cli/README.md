@@ -1,10 +1,10 @@
-# @forgecli/cli
+# @forgecli7/cli
 
-The publishable command-line package for ForgeCLI. The public package name must be confirmed before
+The publishable command-line package for ForgeKi. The public package name must be confirmed before
 the first beta release; the executable command remains `forge`.
 
 ```bash
-npm install --global @forgecli/cli
+npm install --global @forgecli7/cli
 forge --help
 ```
 

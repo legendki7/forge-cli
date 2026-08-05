@@ -1,8 +1,8 @@
 ---
-'@forgecli/plugin-github-actions': minor
-'@forgecli/plugins': minor
-'@forgecli/cli': minor
-'@forgecli/core': patch
+'@forgecli7/plugin-github-actions': minor
+'@forgecli7/plugins': minor
+'@forgecli7/cli': minor
+'@forgecli7/core': patch
 ---
 
 Add project-aware GitHub Actions CI generation through `forge add github-actions`, including shared

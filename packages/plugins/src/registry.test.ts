@@ -1,4 +1,4 @@
-import type { ForgePlugin } from '@forgecli/core';
+import type { ForgePlugin } from '@forgecli7/core';
 import { describe, expect, it } from 'vitest';
 import { loadPlugins } from './loader.js';
 import { PluginRegistry } from './registry.js';

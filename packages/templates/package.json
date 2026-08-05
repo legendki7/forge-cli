@@ -1,8 +1,8 @@
 {
-  "name": "@forgecli/templates",
+  "name": "@forgecli7/templates",
   "version": "0.1.0",
-  "description": "Template contracts and registry for ForgeCLI.",
-  "author": "ForgeCLI contributors",
+  "description": "Template contracts and registry for ForgeKi.",
+  "author": "ForgeKi contributors",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/legendki7/forge-cli.git",
@@ -31,7 +31,7 @@
     "dev": "tsup src/index.ts --format esm --dts --watch"
   },
   "dependencies": {
-    "@forgecli/core": "workspace:*"
+    "@forgecli7/core": "workspace:*"
   },
   "license": "MIT",
   "engines": {

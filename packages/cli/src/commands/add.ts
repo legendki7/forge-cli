@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import type { Command } from 'commander';
-import type { PluginRegistry } from '@forgecli/plugins';
+import type { PluginRegistry } from '@forgecli7/plugins';
 import type { CommandContext } from '../context.js';
 
 export function registerAddCommand(

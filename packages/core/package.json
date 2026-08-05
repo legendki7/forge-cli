@@ -1,8 +1,8 @@
 {
-  "name": "@forgecli/core",
+  "name": "@forgecli7/core",
   "version": "0.1.0",
-  "description": "Core contracts and shared types for ForgeCLI.",
-  "author": "ForgeCLI contributors",
+  "description": "Core contracts and shared types for ForgeKi.",
+  "author": "ForgeKi contributors",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/legendki7/forge-cli.git",

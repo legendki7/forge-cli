@@ -1,3 +1,3 @@
-# @forgecli/plugin-docker
+# @forgecli7/plugin-docker
 
-Non-destructive Docker configuration for projects detected by ForgeCLI.
+Non-destructive Docker configuration for projects detected by ForgeKi.

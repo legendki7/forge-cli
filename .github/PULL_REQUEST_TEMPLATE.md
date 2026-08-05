@@ -1,6 +1,6 @@
 ## Summary
 
-Describe the change and why it belongs in ForgeCLI.
+Describe the change and why it belongs in ForgeKi.
 
 ## Validation
 

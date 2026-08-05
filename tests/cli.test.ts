@@ -63,7 +63,7 @@ function renderedHelp(command: Command): string {
   return output.join('');
 }
 
-describe('ForgeCLI program', () => {
+describe('ForgeKi program', () => {
   it('registers the initial commands', () => {
     const program = createProgram({ cwd: '/workspace', write: () => undefined });
     expect(program.commands.map((command) => command.name())).toEqual(['create', 'add', 'check']);
@@ -300,7 +300,7 @@ describe('ForgeCLI program', () => {
 
     await program.parseAsync(['check'], { from: 'user' });
 
-    expect(output[0]).toContain('ForgeCLI project report');
+    expect(output[0]).toContain('ForgeKi project report');
     expect(output[0]).toContain('Project: fixture-app');
     expect(output[0]).toContain('Framework: Next.js');
     expect(output[0]).toContain('Language: TypeScript');

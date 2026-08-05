@@ -1,10 +1,18 @@
-# ForgeCLI
+# ForgeKi
 
-ForgeCLI is an open-source, TypeScript-based command-line toolkit for scaffolding and configuring
+ForgeKi is an open-source, TypeScript-based command-line toolkit for scaffolding and configuring
 development projects. It provides a modular CLI shell, stable extension contracts, and dedicated
 packages for templates and plugins.
 
-> **Beta status:** ForgeCLI is preparing for its first public prerelease. APIs and generated output
+## Product identity
+
+- Product: **ForgeKi**
+- npm scope: **`@forgecli7`**
+- CLI command: **`forge`**
+- Desktop application: **ForgeKi Desktop** (product name reserved; not implemented in this repository)
+- Source repository: **https://github.com/legendki7/forge-cli**
+
+> **Beta status:** ForgeKi is preparing for its first public prerelease. APIs and generated output
 > may change before a stable release. It currently scaffolds Next.js TypeScript projects and provides
 > project detection, Docker configuration, and GitHub Actions CI generation.
 
@@ -25,16 +33,16 @@ packages for templates and plugins.
 - Node.js 20, 22, or 24
 - pnpm 9 or newer
 
-ForgeCLI supports the maintained Node.js majors exercised by CI: 20, 22, and 24. Unsupported
+ForgeKi supports the maintained Node.js majors exercised by CI: 20, 22, and 24. Unsupported
 versions fail at startup with an actionable message.
 
 ## Installation
 
-The intended package name is `@forgecli/cli`, but scope ownership and npm availability must be
+The intended package name is `@forgecli7/cli`, but scope ownership and npm availability must be
 confirmed manually before release. Until then, treat this command as a placeholder:
 
 ```bash
-npm install --global @forgecli/cli
+npm install --global @forgecli7/cli
 forge --version
 ```
 
@@ -47,7 +55,7 @@ git clone https://github.com/legendki7/forge-cli.git
 cd forge-cli
 pnpm install
 pnpm build
-pnpm --filter @forgecli/cli start -- --help
+pnpm --filter @forgecli7/cli start -- --help
 ```
 
 During development, run the CLI directly from TypeScript:
@@ -88,7 +96,7 @@ forge-cli/
 ```
 
 Dependencies flow inward: plugin contracts live in `core`, individual plugins implement those
-contracts without importing the CLI, and `@forgecli/plugins` loads built-ins into a registry. The
+contracts without importing the CLI, and `@forgecli7/plugins` loads built-ins into a registry. The
 CLI resolves plugins through that registry, so future implementations can be added without changing
 command parsing.
 
@@ -110,7 +118,7 @@ Express, generic Node.js, and unknown. TypeScript is detected from `tsconfig.jso
 dependencies, or `.ts`/`.tsx` source; otherwise recognizable JavaScript projects report JavaScript.
 
 Package managers are detected from lockfiles first, then the valid `packageManager` field in
-`package.json`. If several lockfiles exist, ForgeCLI reports a warning and uses the deterministic
+`package.json`. If several lockfiles exist, ForgeKi reports a warning and uses the deterministic
 priority `pnpm > npm > yarn > bun`. A conflicting lockfile wins with a warning. Malformed or missing
 package metadata produces warnings rather than exceptions.
 
@@ -129,13 +137,13 @@ forge create my-app --docker --github-actions
 ```
 
 Omitting the name starts an interactive wizard. `--interactive` (or `-i`) also enables the wizard
-when a name is supplied. Explicit flags are preserved and their questions are skipped; ForgeCLI asks
+when a name is supplied. Explicit flags are preserved and their questions are skipped; ForgeKi asks
 only for missing values, shows a summary, and asks for confirmation before writing files. Next.js is
 the only framework currently supported, so it is selected without a framework question.
 
 `forge create my-app` remains fully non-interactive for scripts and CI. Its defaults are Next.js,
 pnpm, Git enabled, Docker disabled, and GitHub Actions disabled. npm, Yarn, and Bun are also supported.
-ForgeCLI does not install dependencies or fabricate lockfiles. Git initialization runs `git init`
+ForgeKi does not install dependencies or fabricate lockfiles. Git initialization runs `git init`
 only. Use `--no-git`, `--no-docker`, and `--no-github-actions` to explicitly disable features in a
 partially or fully specified interactive command.
 
@@ -156,7 +164,7 @@ pnpm test:watch   # Run Vitest in watch mode
 
 ## Releases
 
-ForgeCLI uses [Changesets](https://github.com/changesets/changesets) to describe and publish package
+ForgeKi uses [Changesets](https://github.com/changesets/changesets) to describe and publish package
 versions. `pnpm release:inspect` builds and validates the actual package tarballs without publishing;
 `pnpm release:smoke` installs them into an isolated temporary directory and exercises the packed
 CLI. `pnpm release:verify` performs the complete non-publishing release-candidate audit and remains
@@ -180,4 +188,4 @@ secrets, tokens, usernames, and absolute paths before posting.
 
 ## License
 
-ForgeCLI is available under the [MIT License](LICENSE).
+ForgeKi is available under the [MIT License](LICENSE).

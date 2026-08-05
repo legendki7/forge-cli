@@ -1,4 +1,4 @@
-import type { PackageManager, ProjectDetectionResult } from '@forgecli/core';
+import type { PackageManager, ProjectDetectionResult } from '@forgecli7/core';
 
 export function generateDockerfile(project: ProjectDetectionResult): string {
   const lines = [

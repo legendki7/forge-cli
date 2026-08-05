@@ -1,5 +1,5 @@
 {
-  "name": "@forgecli/cli",
+  "name": "@forgecli7/cli",
   "version": "0.1.0",
   "description": "An extensible CLI for safely scaffolding and configuring development projects.",
   "keywords": [
@@ -10,7 +10,7 @@
     "docker",
     "developer-tools"
   ],
-  "author": "ForgeCLI contributors",
+  "author": "ForgeKi contributors",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -44,9 +44,9 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@forgecli/core": "workspace:*",
-    "@forgecli/plugins": "workspace:*",
-    "@forgecli/templates": "workspace:*",
+    "@forgecli7/core": "workspace:*",
+    "@forgecli7/plugins": "workspace:*",
+    "@forgecli7/templates": "workspace:*",
     "chalk": "^5.6.0",
     "commander": "^14.0.0",
     "inquirer": "^12.9.1"

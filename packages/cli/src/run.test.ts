@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { runCli } from './run.js';
 
 const metadata = {
-  name: '@forgecli/cli',
+  name: '@forgecli7/cli',
   version: '0.1.0',
   engines: { node: '^20.0.0 || ^22.0.0 || ^24.0.0' },
 };
@@ -32,6 +32,6 @@ describe('CLI error boundary', () => {
       writeError: (message) => errors.push(message),
     });
     expect(exitCode).toBe(1);
-    expect(errors).toEqual(['ForgeCLI error: package.json is missing']);
+    expect(errors).toEqual(['ForgeKi error: package.json is missing']);
   });
 });

@@ -1,3 +1,3 @@
-# @forgecli/plugin-github-actions
+# @forgecli7/plugin-github-actions
 
-Deterministic, project-aware GitHub Actions CI configuration for ForgeCLI.
+Deterministic, project-aware GitHub Actions CI configuration for ForgeKi.

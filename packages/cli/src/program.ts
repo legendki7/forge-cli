@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { loadPlugins, type PluginRegistry } from '@forgecli/plugins';
+import { loadPlugins, type PluginRegistry } from '@forgecli7/plugins';
 import { registerAddCommand } from './commands/add.js';
 import { registerCheckCommand } from './commands/check.js';
 import { registerCreateCommand, type CreateCommandDependencies } from './commands/create.js';

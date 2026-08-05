@@ -5,8 +5,8 @@ import type {
   PluginApplyResult,
   PluginContext,
   PluginDetectionResult,
-} from '@forgecli/core';
-import { createFileSafely, detectProject } from '@forgecli/core';
+} from '@forgecli7/core';
+import { createFileSafely, detectProject } from '@forgecli7/core';
 import { dockerignore, generateDockerfile } from './templates.js';
 
 const managedFiles = ['Dockerfile', '.dockerignore'] as const;

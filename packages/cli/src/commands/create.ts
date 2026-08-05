@@ -5,9 +5,9 @@ import {
   packageManagerCommand,
   validateProjectName,
   type SupportedPackageManager,
-} from '@forgecli/core';
-import type { PluginRegistry } from '@forgecli/plugins';
-import { createProject, CreateProjectError, type ProcessExecutor } from '@forgecli/templates';
+} from '@forgecli7/core';
+import type { PluginRegistry } from '@forgecli7/plugins';
+import { createProject, CreateProjectError, type ProcessExecutor } from '@forgecli7/templates';
 import type { CommandContext } from '../context.js';
 import { runCreateWizard, type ResolvedCreateConfiguration } from '../create-wizard.js';
 import {
@@ -96,7 +96,7 @@ export function registerCreateCommand(
             error instanceof CreateProjectError || error instanceof Error
               ? error.message
               : 'Project creation failed.';
-          context.write(chalk.red(`ForgeCLI could not create the project: ${message}`));
+          context.write(chalk.red(`ForgeKi could not create the project: ${message}`));
           context.setExitCode?.(1);
         }
       },
@@ -186,7 +186,7 @@ function writeSuccess(
 
   context.write(
     [
-      chalk.bold('ForgeCLI'),
+      chalk.bold('ForgeKi'),
       '',
       `Creating ${configuration.projectName}...`,
       ...steps,

@@ -87,7 +87,7 @@ export function scanRepositoryMarkers(root) {
 
 export function auditPackageMetadata(root) {
   const rootMetadata = readJson(path.join(root, 'package.json'));
-  const expectedScope = '@forgecli/';
+  const expectedScope = '@forgecli7/';
   const expected = {
     repository: rootMetadata.repository?.url,
     homepage: rootMetadata.homepage,
@@ -111,8 +111,8 @@ export function auditPackageMetadata(root) {
       errors.push(`${metadata.name} bugs URL does not match the root metadata.`);
     if (metadata.license !== expected.license)
       errors.push(`${metadata.name} license does not match the root metadata.`);
-    if (metadata.author !== 'ForgeCLI contributors')
-      errors.push(`${metadata.name} must identify ForgeCLI contributors as author.`);
+    if (metadata.author !== 'ForgeKi contributors')
+      errors.push(`${metadata.name} must identify ForgeKi contributors as author.`);
     if (metadata.type !== 'module') errors.push(`${metadata.name} must declare ESM module output.`);
     for (const dependency of Object.keys(metadata.dependencies ?? {})) {
       if (dependency.startsWith('@') && !dependency.startsWith(expectedScope)) {
@@ -122,7 +122,7 @@ export function auditPackageMetadata(root) {
       }
     }
   }
-  const cli = packages.find(({ metadata }) => metadata.name === '@forgecli/cli')?.metadata;
+  const cli = packages.find(({ metadata }) => metadata.name === '@forgecli7/cli')?.metadata;
   if (cli?.bin?.forge !== './dist/index.js')
     errors.push('The CLI must expose the forge executable.');
   return { scope: expectedScope, packages, errors };
@@ -202,7 +202,7 @@ export function inspectChangesets(root) {
         file,
         releases,
         summary,
-        userFacing: releases.some(({ name }) => name === '@forgecli/cli'),
+        userFacing: releases.some(({ name }) => name === '@forgecli7/cli'),
       };
     });
 }

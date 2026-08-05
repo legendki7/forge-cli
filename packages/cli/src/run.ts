@@ -22,7 +22,7 @@ export async function runCli(dependencies: CliRunnerDependencies = {}): Promise<
       metadata.engines.node,
     );
     if (!runtime.supported) {
-      writeError(runtime.message ?? 'ForgeCLI requires a supported Node.js version.');
+      writeError(runtime.message ?? 'ForgeKi requires a supported Node.js version.');
       return 1;
     }
 
@@ -47,7 +47,7 @@ export async function runCli(dependencies: CliRunnerDependencies = {}): Promise<
     return actionExitCode;
   } catch (error) {
     if (error instanceof CommanderError) return error.exitCode;
-    writeError(`ForgeCLI error: ${error instanceof Error ? error.message : String(error)}`);
+    writeError(`ForgeKi error: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
   }
 }

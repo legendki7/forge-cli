@@ -20,14 +20,14 @@ export function validateNodeRuntime(
     }));
 
   if (!current || supported.length === 0) {
-    return { supported: false, message: 'ForgeCLI could not validate the Node.js runtime.' };
+    return { supported: false, message: 'ForgeKi could not validate the Node.js runtime.' };
   }
 
   const match = supported.find((minimum) => minimum.major === current.major);
   if (match && compareVersions(current, match) >= 0) return { supported: true };
   return {
     supported: false,
-    message: `ForgeCLI requires Node.js ${supportedRange}. Current version: ${currentVersion}. Install a supported Node.js release and try again.`,
+    message: `ForgeKi requires Node.js ${supportedRange}. Current version: ${currentVersion}. Install a supported Node.js release and try again.`,
   };
 }
 

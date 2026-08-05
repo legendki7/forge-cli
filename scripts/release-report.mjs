@@ -32,7 +32,7 @@ export function writeReleaseCandidateReport(root, audit) {
       ? audit.technicalErrors.map((error) => `- ${sanitizeTechnicalError(error, root)}`).join('\n')
       : '- None.';
 
-  const report = `# ForgeCLI release-candidate report
+  const report = `# ForgeKi release-candidate report
 
 **Audit date:** ${audit.date}
 
@@ -40,7 +40,7 @@ export function writeReleaseCandidateReport(root, audit) {
 
 ## Release identity
 
-- Intended npm scope: \`@forgecli/\`
+- Intended npm scope: \`@forgecli7/\`
 - Executable: \`forge\`
 - Supported Node.js versions: 20, 22, and 24
 - Tested CI platform: Ubuntu Linux
@@ -113,13 +113,13 @@ ${technical}
 ## Exact manual release sequence
 
 1. Commit the reviewed candidate and start from a clean checkout.
-2. Confirm ownership and availability of all six \`@forgecli/*\` package names.
+2. Confirm ownership and availability of all six \`@forgecli7/*\` package names.
 3. Configure npm Trusted Publishing, or a protected \`NPM_TOKEN\` secret in the \`npm-beta\` environment.
 4. Run \`pnpm release:verify\` and require a ready status.
 5. Run \`pnpm changeset pre enter beta\`, commit the prerelease state, and review the Changesets version PR.
 6. Review \`pnpm release:inspect\` output and merge only after CI succeeds.
 7. Manually dispatch the protected release workflow with \`publish_beta=true\`.
-8. Verify \`npm install --global @forgecli/cli@beta\` and the documented CLI commands.
+8. Verify \`npm install --global @forgecli7/cli@beta\` and the documented CLI commands.
 
 ## Partial-publication recovery
 

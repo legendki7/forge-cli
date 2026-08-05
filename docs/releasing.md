@@ -1,6 +1,6 @@
-# Releasing ForgeCLI
+# Releasing ForgeKi
 
-ForgeCLI is preparing a coordinated scoped-package beta. No release command in the normal quality
+ForgeKi is preparing a coordinated scoped-package beta. No release command in the normal quality
 workflow publishes automatically. The first public release must use the npm distribution tag
 `beta`, never `latest`.
 
@@ -20,7 +20,7 @@ workflow publishes automatically. The first public release must use the npm dist
 ## Manual checks
 
 - [ ] Working tree is clean and contains the intended Changesets
-- [ ] npm ownership and availability of `@forgecli/cli` and all internal scoped names are confirmed
+- [ ] npm ownership and availability of `@forgecli7/cli` and all internal scoped names are confirmed
 - [ ] Repository metadata points to `https://github.com/legendki7/forge-cli`
 - [ ] Package descriptions, license, repository links, homepage, bugs URL, and contributors are reviewed
 - [ ] GitHub private vulnerability reporting is enabled
@@ -33,7 +33,7 @@ workflow publishes automatically. The first public release must use the npm dist
 ## First beta sequence
 
 1. **Confirm names.** Check npm scope ownership and availability manually. The intended executable
-   package is `@forgecli/cli`; the executable remains `forge`. Update package metadata and repository
+   package is `@forgecli7/cli`; the executable remains `forge`. Update package metadata and repository
    placeholders if a different scope is required.
 2. **Configure authentication.** Prefer npm Trusted Publishing after the package-to-workflow OIDC
    relationship is configured and reviewed. Until then, the committed workflow requires the
@@ -49,7 +49,7 @@ workflow publishes automatically. The first public release must use the npm dist
 6. **Publish the beta.** Manually dispatch the `Changesets release` workflow with
    `publish_beta=true`. The protected job runs validation first and publishes with `--tag beta`.
 7. **Verify installation.** In a clean temporary environment, run
-   `npm install --global @forgecli/cli@beta`, then verify `forge --version`, `forge --help`,
+   `npm install --global @forgecli7/cli@beta`, then verify `forge --version`, `forge --help`,
    `forge check`, project creation, and both built-in plugins.
 8. **Prepare for stable later.** After the beta series is complete, run `pnpm changeset pre exit`,
    review the resulting stable version PR, and publish without changing `latest` until the stable

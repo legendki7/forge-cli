@@ -16,7 +16,7 @@ import {
   validateProjectName,
   type ForgePlugin,
   type SupportedPackageManager,
-} from '@forgecli/core';
+} from '@forgecli7/core';
 import { renderNextjsTemplate } from './nextjs/template.js';
 
 export interface ProcessResult {
@@ -138,7 +138,7 @@ export async function createProject(options: CreateProjectOptions): Promise<Crea
   }
 
   const lockPath = path.join(destination, '.forgecli-create.lock');
-  if (!(await createFileSafely(lockPath, 'ForgeCLI scaffolding in progress\n'))) {
+  if (!(await createFileSafely(lockPath, 'ForgeKi scaffolding in progress\n'))) {
     throw new CreateProjectError(
       'DESTINATION_BUSY',
       'Another scaffold operation is using this destination.',

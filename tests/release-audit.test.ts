@@ -122,11 +122,11 @@ async function packageFixture(): Promise<string> {
     }),
   );
   for (const [index, directory] of packageDirectories.entries()) {
-    const name = directory === 'packages/cli' ? '@forgecli/cli' : `@forgecli/package-${index}`;
+    const name = directory === 'packages/cli' ? '@forgecli7/cli' : `@forgecli7/package-${index}`;
     const metadata = {
       name,
       version: '0.1.0',
-      author: 'ForgeCLI contributors',
+      author: 'ForgeKi contributors',
       license: 'MIT',
       type: 'module',
       repository: { url: repository },

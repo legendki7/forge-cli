@@ -2,7 +2,7 @@ import {
   SUPPORTED_PACKAGE_MANAGER_VERSIONS,
   validateProjectName,
   type SupportedPackageManager,
-} from '@forgecli/core';
+} from '@forgecli7/core';
 import type { CreatePromptAdapter } from './prompts.js';
 
 export interface CreateWizardInput {

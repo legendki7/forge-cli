@@ -41,13 +41,13 @@ importers:
 
   packages/cli:
     dependencies:
-      '@forgecli/core':
+      '@forgecli7/core':
         specifier: workspace:*
         version: link:../core
-      '@forgecli/plugins':
+      '@forgecli7/plugins':
         specifier: workspace:*
         version: link:../plugins
-      '@forgecli/templates':
+      '@forgecli7/templates':
         specifier: workspace:*
         version: link:../templates
       chalk:
@@ -68,31 +68,31 @@ importers:
 
   packages/plugins:
     dependencies:
-      '@forgecli/core':
+      '@forgecli7/core':
         specifier: workspace:*
         version: link:../core
-      '@forgecli/plugin-docker':
+      '@forgecli7/plugin-docker':
         specifier: workspace:*
         version: link:plugin-docker
-      '@forgecli/plugin-github-actions':
+      '@forgecli7/plugin-github-actions':
         specifier: workspace:*
         version: link:plugin-github-actions
 
   packages/plugins/plugin-docker:
     dependencies:
-      '@forgecli/core':
+      '@forgecli7/core':
         specifier: workspace:*
         version: link:../../core
 
   packages/plugins/plugin-github-actions:
     dependencies:
-      '@forgecli/core':
+      '@forgecli7/core':
         specifier: workspace:*
         version: link:../../core
 
   packages/templates:
     dependencies:
-      '@forgecli/core':
+      '@forgecli7/core':
         specifier: workspace:*
         version: link:../core
 

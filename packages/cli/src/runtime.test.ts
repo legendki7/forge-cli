@@ -20,7 +20,7 @@ describe('Node.js runtime validation', () => {
   it('fails safely for an unrecognized engine expression', () => {
     expect(validateNodeRuntime('22.0.0', '>=20')).toEqual({
       supported: false,
-      message: 'ForgeCLI could not validate the Node.js runtime.',
+      message: 'ForgeKi could not validate the Node.js runtime.',
     });
   });
 });

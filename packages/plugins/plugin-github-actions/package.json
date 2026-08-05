@@ -1,8 +1,8 @@
 {
-  "name": "@forgecli/plugin-github-actions",
+  "name": "@forgecli7/plugin-github-actions",
   "version": "0.1.0",
-  "description": "Project-aware GitHub Actions CI plugin for ForgeCLI.",
-  "author": "ForgeCLI contributors",
+  "description": "Project-aware GitHub Actions CI plugin for ForgeKi.",
+  "author": "ForgeKi contributors",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/legendki7/forge-cli.git",
@@ -31,7 +31,7 @@
     "dev": "tsup src/index.ts --format esm --dts --watch"
   },
   "dependencies": {
-    "@forgecli/core": "workspace:*"
+    "@forgecli7/core": "workspace:*"
   },
   "license": "MIT",
   "engines": {

@@ -1,4 +1,4 @@
-# Contributing to ForgeCLI
+# Contributing to ForgeKi
 
 Thank you for contributing. Read the [architecture](docs/architecture.md), then:
 

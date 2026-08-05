@@ -12,7 +12,7 @@ export function readCliPackageMetadata(moduleUrl: string = import.meta.url): Cli
   const require = createRequire(moduleUrl);
   const metadata: unknown = require('../package.json');
   if (!isCliPackageMetadata(metadata)) {
-    throw new Error('The installed ForgeCLI package metadata is missing or invalid.');
+    throw new Error('The installed ForgeKi package metadata is missing or invalid.');
   }
   return metadata;
 }

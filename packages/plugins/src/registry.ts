@@ -1,4 +1,4 @@
-import type { ForgePlugin } from '@forgecli/core';
+import type { ForgePlugin } from '@forgecli7/core';
 
 export class PluginRegistry {
   readonly #plugins = new Map<string, ForgePlugin>();

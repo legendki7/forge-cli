@@ -1,10 +1,10 @@
 ---
-'@forgecli/cli': minor
-'@forgecli/core': patch
-'@forgecli/templates': patch
-'@forgecli/plugins': patch
-'@forgecli/plugin-docker': patch
-'@forgecli/plugin-github-actions': patch
+'@forgecli7/cli': minor
+'@forgecli7/core': patch
+'@forgecli7/templates': patch
+'@forgecli7/plugins': patch
+'@forgecli7/plugin-docker': patch
+'@forgecli7/plugin-github-actions': patch
 ---
 
 Prepare coordinated packages for a safe public beta with package-derived version output, enforced

@@ -1,20 +1,20 @@
 # Architecture
 
-ForgeCLI is organized as a pnpm monorepo. Each package owns one concern and publishes a deliberately
+ForgeKi is organized as a pnpm monorepo. Each package owns one concern and publishes a deliberately
 small public API.
 
 ## Package boundaries
 
-- **`@forgecli/cli`** owns argument parsing, interactive prompts, and terminal output. Commands are
+- **`@forgecli7/cli`** owns argument parsing, interactive prompts, and terminal output. Commands are
   registered as isolated modules and receive dependencies through a command context.
-- **`@forgecli/core`** owns shared contracts and the project detection engine. It uses Node.js
+- **`@forgecli7/core`** owns shared contracts and the project detection engine. It uses Node.js
   filesystem APIs but has no terminal, prompt, or third-party runtime dependencies.
-- **`@forgecli/templates`** defines template metadata and the template registry boundary.
-- **`@forgecli/plugins`** owns the plugin registry and built-in plugin loader. Duplicate identifiers
+- **`@forgecli7/templates`** defines template metadata and the template registry boundary.
+- **`@forgecli7/plugins`** owns the plugin registry and built-in plugin loader. Duplicate identifiers
   are rejected and lookups are case-insensitive.
-- **`@forgecli/plugin-docker`** implements Docker detection and non-destructive Docker configuration.
+- **`@forgecli7/plugin-docker`** implements Docker detection and non-destructive Docker configuration.
   It depends only on `core` and has no knowledge of Commander.js.
-- **`@forgecli/plugin-github-actions`** generates deterministic, script-aware CI workflows from the
+- **`@forgecli7/plugin-github-actions`** generates deterministic, script-aware CI workflows from the
   shared project detection result. Bun rendering is isolated from Node package-manager rendering.
 
 ## Extension model
@@ -70,7 +70,7 @@ and at least one recognized validation script. It treats an existing workflow di
 
 ## Scaffolding
 
-`@forgecli/templates` owns the deterministic Next.js renderer and `createProject()` orchestration.
+`@forgecli7/templates` owns the deterministic Next.js renderer and `createProject()` orchestration.
 The renderer returns an in-memory ordered file list before filesystem mutation. `core` owns reusable
 name validation, package-manager metadata, commands, detection, and exclusive file creation.
 
@@ -91,14 +91,14 @@ publishing, dependency installation, template rendering, and project validation 
 
 ## Publishing model
 
-ForgeCLI publishes coordinated scoped workspace packages rather than bundling the complete system
-into the CLI artifact. `@forgecli/cli` depends on `core`, `templates`, and the built-in plugin registry;
+ForgeKi publishes coordinated scoped workspace packages rather than bundling the complete system
+into the CLI artifact. `@forgecli7/cli` depends on `core`, `templates`, and the built-in plugin registry;
 the registry depends on both built-in plugin packages. This preserves intentional package APIs and
 keeps plugins independently versioned. pnpm converts `workspace:*` declarations to compatible
 registry versions while packing and publishing, and release inspection fails if an unresolved
 workspace protocol remains.
 
-The initial intended CLI name is `@forgecli/cli`. It is controlled by
+The initial intended CLI name is `@forgecli7/cli`. It is controlled by
 `packages/cli/package.json`; npm scope ownership and package availability require a manual check
 before release. A different available scoped name may be selected there without changing the `forge`
 binary mapping. All six public packages must be versioned and published together through Changesets.

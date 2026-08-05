@@ -1,4 +1,4 @@
-# ForgeCLI release-candidate report
+# ForgeKi release-candidate report
 
 **Audit date:** 2026-08-05
 
@@ -6,7 +6,7 @@
 
 ## Release identity
 
-- Intended npm scope: `@forgecli/`
+- Intended npm scope: `@forgecli7/`
 - Executable: `forge`
 - Supported Node.js versions: 20, 22, and 24
 - Tested CI platform: Ubuntu Linux
@@ -20,35 +20,35 @@ and package availability were not queried and must be confirmed manually.
 These versions were produced by Changesets in a temporary repository copy using prerelease mode;
 tracked package versions were not edited.
 
-| Package                           | Planned version |
-| --------------------------------- | --------------- |
-| `@forgecli/cli`                   | `0.2.0-beta.0`  |
-| `@forgecli/core`                  | `0.2.0-beta.0`  |
-| `@forgecli/plugin-docker`         | `0.1.1-beta.0`  |
-| `@forgecli/plugin-github-actions` | `0.2.0-beta.0`  |
-| `@forgecli/plugins`               | `0.2.0-beta.0`  |
-| `@forgecli/templates`             | `0.2.0-beta.0`  |
+| Package                            | Planned version |
+| ---------------------------------- | --------------- |
+| `@forgecli7/cli`                   | `0.2.0-beta.0`  |
+| `@forgecli7/core`                  | `0.2.0-beta.0`  |
+| `@forgecli7/plugin-docker`         | `0.1.1-beta.0`  |
+| `@forgecli7/plugin-github-actions` | `0.2.0-beta.0`  |
+| `@forgecli7/plugins`               | `0.2.0-beta.0`  |
+| `@forgecli7/templates`             | `0.2.0-beta.0`  |
 
 ## Changesets audit
 
-| Changeset                  | Package                           | Bump  | User-facing | Summary                                                                                                                                                                                                                                                  |
-| -------------------------- | --------------------------------- | ----- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bright-actions-build.md`  | `@forgecli/plugin-github-actions` | minor | Yes         | Add project-aware GitHub Actions CI generation through `forge add github-actions`, including shared race-safe file creation, package-manager-specific setup, script-aware validation steps, and non-destructive handling of existing workflows.          |
-| `bright-actions-build.md`  | `@forgecli/plugins`               | minor | Yes         | Add project-aware GitHub Actions CI generation through `forge add github-actions`, including shared race-safe file creation, package-manager-specific setup, script-aware validation steps, and non-destructive handling of existing workflows.          |
-| `bright-actions-build.md`  | `@forgecli/cli`                   | minor | Yes         | Add project-aware GitHub Actions CI generation through `forge add github-actions`, including shared race-safe file creation, package-manager-specific setup, script-aware validation steps, and non-destructive handling of existing workflows.          |
-| `bright-actions-build.md`  | `@forgecli/core`                  | patch | Yes         | Add project-aware GitHub Actions CI generation through `forge add github-actions`, including shared race-safe file creation, package-manager-specific setup, script-aware validation steps, and non-destructive handling of existing workflows.          |
-| `calm-projects-create.md`  | `@forgecli/cli`                   | minor | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                      |
-| `calm-projects-create.md`  | `@forgecli/templates`             | minor | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                      |
-| `calm-projects-create.md`  | `@forgecli/core`                  | minor | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                      |
-| `calm-projects-create.md`  | `@forgecli/plugin-docker`         | patch | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                      |
-| `calm-projects-create.md`  | `@forgecli/plugin-github-actions` | patch | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                      |
-| `gentle-create-prompts.md` | `@forgecli/cli`                   | minor | Yes         | Add an interactive `forge create` wizard with partial-option prompting, a confirmation summary, non-TTY safeguards, and injectable prompt and process adapters while preserving named command automation.                                                |
-| `safe-public-beta.md`      | `@forgecli/cli`                   | minor | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
-| `safe-public-beta.md`      | `@forgecli/core`                  | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
-| `safe-public-beta.md`      | `@forgecli/templates`             | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
-| `safe-public-beta.md`      | `@forgecli/plugins`               | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
-| `safe-public-beta.md`      | `@forgecli/plugin-docker`         | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
-| `safe-public-beta.md`      | `@forgecli/plugin-github-actions` | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
+| Changeset                  | Package                            | Bump  | User-facing | Summary                                                                                                                                                                                                                                                  |
+| -------------------------- | ---------------------------------- | ----- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bright-actions-build.md`  | `@forgecli7/plugin-github-actions` | minor | Yes         | Add project-aware GitHub Actions CI generation through `forge add github-actions`, including shared race-safe file creation, package-manager-specific setup, script-aware validation steps, and non-destructive handling of existing workflows.          |
+| `bright-actions-build.md`  | `@forgecli7/plugins`               | minor | Yes         | Add project-aware GitHub Actions CI generation through `forge add github-actions`, including shared race-safe file creation, package-manager-specific setup, script-aware validation steps, and non-destructive handling of existing workflows.          |
+| `bright-actions-build.md`  | `@forgecli7/cli`                   | minor | Yes         | Add project-aware GitHub Actions CI generation through `forge add github-actions`, including shared race-safe file creation, package-manager-specific setup, script-aware validation steps, and non-destructive handling of existing workflows.          |
+| `bright-actions-build.md`  | `@forgecli7/core`                  | patch | Yes         | Add project-aware GitHub Actions CI generation through `forge add github-actions`, including shared race-safe file creation, package-manager-specific setup, script-aware validation steps, and non-destructive handling of existing workflows.          |
+| `calm-projects-create.md`  | `@forgecli7/cli`                   | minor | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                      |
+| `calm-projects-create.md`  | `@forgecli7/templates`             | minor | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                      |
+| `calm-projects-create.md`  | `@forgecli7/core`                  | minor | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                      |
+| `calm-projects-create.md`  | `@forgecli7/plugin-docker`         | patch | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                      |
+| `calm-projects-create.md`  | `@forgecli7/plugin-github-actions` | patch | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                      |
+| `gentle-create-prompts.md` | `@forgecli7/cli`                   | minor | Yes         | Add an interactive `forge create` wizard with partial-option prompting, a confirmation summary, non-TTY safeguards, and injectable prompt and process adapters while preserving named command automation.                                                |
+| `safe-public-beta.md`      | `@forgecli7/cli`                   | minor | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
+| `safe-public-beta.md`      | `@forgecli7/core`                  | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
+| `safe-public-beta.md`      | `@forgecli7/templates`             | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
+| `safe-public-beta.md`      | `@forgecli7/plugins`               | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
+| `safe-public-beta.md`      | `@forgecli7/plugin-docker`         | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
+| `safe-public-beta.md`      | `@forgecli7/plugin-github-actions` | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
 
 The Changesets describe distinct plugin, scaffolding, interactive, and publishability work. Their
 overlapping CLI minor bumps are cumulative rather than contradictory; Changesets coalesces them into
@@ -99,13 +99,13 @@ Technical blockers:
 ## Exact manual release sequence
 
 1. Commit the reviewed candidate and start from a clean checkout.
-2. Confirm ownership and availability of all six `@forgecli/*` package names.
+2. Confirm ownership and availability of all six `@forgecli7/*` package names.
 3. Configure npm Trusted Publishing, or a protected `NPM_TOKEN` secret in the `npm-beta` environment.
 4. Run `pnpm release:verify` and require a ready status.
 5. Run `pnpm changeset pre enter beta`, commit the prerelease state, and review the Changesets version PR.
 6. Review `pnpm release:inspect` output and merge only after CI succeeds.
 7. Manually dispatch the protected release workflow with `publish_beta=true`.
-8. Verify `npm install --global @forgecli/cli@beta` and the documented CLI commands.
+8. Verify `npm install --global @forgecli7/cli@beta` and the documented CLI commands.
 
 ## Partial-publication recovery
 
