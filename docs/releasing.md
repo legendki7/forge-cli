@@ -11,6 +11,9 @@ workflow publishes automatically. The first public release must use the npm dist
 - [ ] `pnpm lint`
 - [ ] `pnpm test`
 - [ ] `pnpm build`
+- [ ] `pnpm desktop:check` and `pnpm desktop:test`
+- [ ] `pnpm desktop:build` succeeds on each native platform being claimed, or missing prerequisites
+      are documented without weakening the headless checks
 - [ ] `pnpm release:inspect` passes and its tarball file lists are reviewed
 - [ ] `pnpm release:smoke` passes outside the monorepo
 - [ ] `pnpm release:verify` completes with a ready status
@@ -57,6 +60,11 @@ workflow publishes automatically. The first public release must use the npm dist
 
 Do not run `pnpm release:publish` locally unless acting in an explicitly authorized, authenticated
 release environment. It is intentionally separate from inspection and smoke validation.
+
+ForgeKi Desktop is private and is not published through Changesets. Native artifacts are produced
+only by the manually dispatched desktop workflow for maintainer testing. That workflow does not sign
+binaries, create a GitHub release, or make installers public. Platform support must not be claimed
+until maintainers have tested the corresponding uploaded artifact.
 
 ### Partial publication recovery
 

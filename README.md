@@ -4,12 +4,21 @@ ForgeKi is an open-source, TypeScript-based command-line toolkit for scaffolding
 development projects. It provides a modular CLI shell, stable extension contracts, and dedicated
 packages for templates and plugins.
 
+ForgeKi now has two local interfaces over the same tested project engine:
+
+- **ForgeKi Desktop** is a graphical desktop application for creating development projects without
+  using a terminal.
+- **ForgeKi CLI** is the `forge` terminal interface for automation and advanced users.
+
+ForgeKi Desktop is an MVP under active development. Native installers are not publicly available,
+and production readiness or cross-platform support is not yet claimed.
+
 ## Product identity
 
 - Product: **ForgeKi**
 - npm scope: **`@forgecli7`**
 - CLI command: **`forge`**
-- Desktop application: **ForgeKi Desktop** (product name reserved; not implemented in this repository)
+- Desktop application: **ForgeKi Desktop**
 - Source repository: **https://github.com/legendki7/forge-cli**
 
 > **Beta status:** ForgeKi is preparing for its first public prerelease. APIs and generated output
@@ -83,6 +92,8 @@ Existing files are always preserved, so the command is safe to run repeatedly.
 
 ```text
 forge-cli/
+|-- apps/
+|   `-- desktop/                # React, Tauri, and typed Node worker bridge
 |-- packages/
 |   |-- cli/                    # Commands and terminal presentation
 |   |-- core/                   # Shared contracts and domain types
@@ -99,6 +110,24 @@ Dependencies flow inward: plugin contracts live in `core`, individual plugins im
 contracts without importing the CLI, and `@forgecli7/plugins` loads built-ins into a registry. The
 CLI resolves plugins through that registry, so future implementations can be added without changing
 command parsing.
+
+## ForgeKi Desktop
+
+The desktop MVP creates Next.js TypeScript App Router projects with pnpm, npm, Yarn, or Bun metadata.
+It supports optional Git initialization, Docker configuration, and GitHub Actions CI without
+installing dependencies or accessing the network. Folder selection, progress, confirmation, safe
+open-folder behavior, warnings, and package-manager-specific next steps are presented graphically.
+
+```bash
+pnpm desktop:dev
+pnpm desktop:check
+pnpm desktop:test
+pnpm desktop:build
+```
+
+Desktop development requires Rust and the platform prerequisites documented in
+[the desktop guide](docs/desktop.md). `desktop:check` and `desktop:test` are headless; the native
+build command reports missing prerequisites and never installs them automatically.
 
 ## Plugin API
 
@@ -160,6 +189,7 @@ pnpm lint         # Run ESLint across the repository
 pnpm format       # Format supported files with Prettier
 pnpm test         # Run the Vitest suite once
 pnpm test:watch   # Run Vitest in watch mode
+pnpm desktop:check # Validate the desktop UI, bridge, types, and Tauri configuration
 ```
 
 ## Releases

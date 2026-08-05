@@ -22,6 +22,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
+      - run: pnpm desktop:check
 
   test:
     name: Test on Node.js ${{ matrix.node }}
@@ -53,5 +54,5 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
-      - run: pnpm release:inspect
-      - run: pnpm release:smoke
+      - run: pnpm build
+      - run: pnpm release:verify

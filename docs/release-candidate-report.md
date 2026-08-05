@@ -49,6 +49,7 @@ tracked package versions were not edited.
 | `safe-public-beta.md`      | `@forgecli7/plugins`               | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
 | `safe-public-beta.md`      | `@forgecli7/plugin-docker`         | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
 | `safe-public-beta.md`      | `@forgecli7/plugin-github-actions` | patch | Yes         | Prepare coordinated packages for a safe public beta with package-derived version output, enforced Node.js support, publish metadata, explicit tarball inspection, packed-install smoke validation, release governance, and opt-in Changesets publishing. |
+| `swift-desktop-create.md`  | `@forgecli7/core`                  | minor | No          | Expose the browser-safe project-name validator used by the private ForgeKi Desktop application.                                                                                                                                                          |
 
 The Changesets describe distinct plugin, scaffolding, interactive, and publishability work. Their
 overlapping CLI minor bumps are cumulative rather than contradictory; Changesets coalesces them into
@@ -59,7 +60,7 @@ one coherent minor prerelease. Internal dependency bumps are coordinated across 
 - Placeholder and machine-data classification
 - Package scope and metadata consistency
 - Formatting and ESLint
-- 14-file Vitest suite, including verification-utility tests
+- CLI, package, release-utility, desktop UI, and desktop bridge Vitest suites
 - All six public package builds and export-map resolution
 - Non-mutating Changesets prerelease planning in a temporary copy
 - Actual tarball allowlist, shebang, bin, and workspace-version inspection

@@ -3,6 +3,12 @@
 ForgeKi is organized as a pnpm monorepo. Each package owns one concern and publishes a deliberately
 small public API.
 
+`apps/desktop` is a private workspace application. Its React frontend uses the browser-safe
+`@forgecli7/core/project-name` export, while a packaged Node worker imports the full core,
+templates, registry, Docker, and GitHub Actions packages. Tauri mediates native operations through
+four narrow Rust commands and never exposes a general shell or filesystem API to the webview. See
+[Desktop architecture](desktop.md) for the trust boundary and packaging tradeoffs.
+
 ## Package boundaries
 
 - **`@forgecli7/cli`** owns argument parsing, interactive prompts, and terminal output. Commands are
@@ -88,6 +94,10 @@ rollback.
 
 The Docker plugin creates local configuration files only. Deployment, image building, registry
 publishing, dependency installation, template rendering, and project validation remain out of scope.
+
+ForgeKi Desktop supports only the existing Next.js TypeScript App Router scaffold. It is not an
+alternative project engine: it is a graphical adapter over the same `createProject()` operation and
+plugin order used by ForgeKi CLI.
 
 ## Publishing model
 

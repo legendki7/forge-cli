@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 export interface ProjectNameValidationResult {
   valid: boolean;
   message?: string;
@@ -12,7 +10,7 @@ export function validateProjectName(projectName: string): ProjectNameValidationR
   if (projectName === '.' || projectName === '..' || projectName.includes('..')) {
     return invalid('Project name must not contain path traversal.');
   }
-  if (path.isAbsolute(projectName) || /^[a-zA-Z]:[\\/]/.test(projectName)) {
+  if (/^(?:[a-zA-Z]:[\\/]|[\\/])/.test(projectName)) {
     return invalid('Project name must be relative to the current directory.');
   }
   if (/[\\/]/.test(projectName)) return invalid('Project name must not contain path separators.');

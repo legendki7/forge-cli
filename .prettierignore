@@ -1,4 +1,5 @@
 dist
+dist-worker
 coverage
 node_modules
 pnpm-lock.yaml

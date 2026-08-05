@@ -1,0 +1,34 @@
+import { existsSync, readFileSync } from 'node:fs';
+import console from 'node:console';
+import path from 'node:path';
+
+const appRoot = path.resolve(import.meta.dirname, '..');
+const tauriRoot = path.join(appRoot, 'src-tauri');
+const config = JSON.parse(readFileSync(path.join(tauriRoot, 'tauri.conf.json'), 'utf8'));
+const capability = JSON.parse(
+  readFileSync(path.join(tauriRoot, 'capabilities', 'default.json'), 'utf8'),
+);
+const failures = [];
+
+if (config.productName !== 'ForgeKi') failures.push('productName must be ForgeKi.');
+if (config.identifier !== 'com.legendki7.forgeki') failures.push('identifier is incorrect.');
+if (config.app?.windows?.[0]?.title !== 'ForgeKi') failures.push('window title must be ForgeKi.');
+if (!config.bundle?.externalBin?.includes('binaries/forgeki-worker')) {
+  failures.push('the fixed ForgeKi worker sidecar must be bundled.');
+}
+if (capability.permissions.some((permission) => String(permission).startsWith('shell:'))) {
+  failures.push('the frontend must not receive shell permissions.');
+}
+for (const relative of [
+  'Cargo.toml',
+  'src/lib.rs',
+  'src/main.rs',
+  'icons/icon.svg',
+  'icons/icon.ico',
+  'icons/icon.icns',
+]) {
+  if (!existsSync(path.join(tauriRoot, relative))) failures.push(`${relative} is missing.`);
+}
+
+if (failures.length) throw new Error(failures.join('\n'));
+console.log('Tauri configuration and least-privilege capability checks passed.');

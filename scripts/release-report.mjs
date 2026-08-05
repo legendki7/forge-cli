@@ -73,7 +73,7 @@ one coherent minor prerelease. Internal dependency bumps are coordinated across 
 - Placeholder and machine-data classification
 - Package scope and metadata consistency
 - Formatting and ESLint
-- 14-file Vitest suite, including verification-utility tests
+- CLI, package, release-utility, desktop UI, and desktop bridge Vitest suites
 - All six public package builds and export-map resolution
 - Non-mutating Changesets prerelease planning in a temporary copy
 - Actual tarball allowlist, shebang, bin, and workspace-version inspection

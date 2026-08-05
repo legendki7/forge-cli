@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "baseUrl": "../..",
+    "paths": {
+      "@forgecli7/core": ["packages/core/src/index.ts"],
+      "@forgecli7/core/project-name": ["packages/core/src/project-name.ts"],
+      "@forgecli7/plugin-docker": ["packages/plugins/plugin-docker/src/index.ts"],
+      "@forgecli7/plugin-github-actions": ["packages/plugins/plugin-github-actions/src/index.ts"],
+      "@forgecli7/plugins": ["packages/plugins/src/index.ts"],
+      "@forgecli7/templates": ["packages/templates/src/index.ts"]
+    },
+    "types": ["vitest/globals", "@testing-library/jest-dom"]
+  },
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+}

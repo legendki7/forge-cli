@@ -13,7 +13,16 @@ export const packageDirectories = [
   'packages/cli',
 ];
 
-const excludedDirectories = new Set(['.git', 'node_modules', 'dist', 'coverage']);
+const excludedDirectories = new Set([
+  '.git',
+  'node_modules',
+  'dist',
+  'coverage',
+  'target',
+  'dist-worker',
+  'binaries',
+  'graphify-out',
+]);
 const ownershipPlaceholder = 'YOUR_GITHUB_USERNAME';
 const markerPatterns = [
   ['repository owner placeholder', new RegExp(`${ownershipPlaceholder}|YOUR_USERNAME`, 'giu')],
