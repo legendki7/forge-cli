@@ -5,11 +5,12 @@ import {
   ActivityPage,
   DeveloperToolsPage,
   HomePage,
-  PluginsPage,
   ScanProjectPage,
   SettingsPage,
   TemplatesPage,
 } from './pages';
+import { MarketplacePage } from './Marketplace';
+import type { PluginCatalogEntry } from '@forgecli7/plugins';
 import {
   addActivity,
   addRecentProject,
@@ -35,7 +36,7 @@ const navigation: readonly { id: NavigationPage; label: string; icon: string }[]
   { id: 'templates', label: 'Templates', icon: 'T' },
   { id: 'stack-builder', label: 'Stack Builder', icon: 'B' },
   { id: 'scan', label: 'Scan Project', icon: 'S' },
-  { id: 'plugins', label: 'Plugins', icon: 'P' },
+  { id: 'plugins', label: 'Marketplace', icon: 'P' },
   { id: 'tools', label: 'Developer Tools', icon: 'D' },
   { id: 'activity', label: 'Activity', icon: 'A' },
   { id: 'settings', label: 'Settings', icon: 'G' },
@@ -47,6 +48,7 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
   const [loaded, setLoaded] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>('nextjs-blank');
   const [selectedProject, setSelectedProject] = useState<string>();
+  const [pluginCatalog, setPluginCatalog] = useState<PluginCatalogEntry[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -62,6 +64,13 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
     return () => {
       active = false;
     };
+  }, [bridge]);
+
+  useEffect(() => {
+    void bridge
+      .listMarketplacePlugins()
+      .then(setPluginCatalog)
+      .catch(() => setPluginCatalog([]));
   }, [bridge]);
 
   useEffect(() => {
@@ -91,8 +100,8 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
 
   function projectCreated(result: DesktopCreateResult) {
     const now = new Date().toISOString();
-    updateState((current) =>
-      addActivity(
+    updateState((current) => {
+      let next = addActivity(
         addRecentProject(current, {
           name: result.projectName,
           path: result.projectDirectory,
@@ -112,8 +121,22 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
             ? 'Project created with warnings.'
             : 'Project created successfully.',
         },
-      ),
-    );
+      );
+      for (const plugin of result.generationPlan?.plugins.filter(
+        ({ source }) => source === 'community',
+      ) ?? []) {
+        next = addActivity(next, {
+          id: `${Date.now()}-plugin-${plugin.id}`,
+          type: 'plugin-used',
+          projectName: result.projectName,
+          projectPath: result.projectDirectory,
+          timestamp: now,
+          result: 'success',
+          message: `Used restricted plugin ${plugin.id} in generation.`,
+        });
+      }
+      return next;
+    });
     setSelectedProject(result.projectDirectory);
   }
 
@@ -206,6 +229,10 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
               }}
               onCreated={projectCreated}
               onActivity={record}
+              communityPlugins={pluginCatalog.filter(
+                (plugin) =>
+                  plugin.installed && plugin.integrity === 'valid' && Boolean(plugin.manifest),
+              )}
             />
           </Suspense>
         );
@@ -220,12 +247,14 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
         );
       case 'plugins':
         return (
-          <PluginsPage
+          <MarketplacePage
             bridge={bridge}
+            preferences={state.preferences}
             projectPath={selectedProject}
             onProjectPath={setSelectedProject}
             onScan={projectScanned}
             onActivity={record}
+            onCatalogChange={setPluginCatalog}
           />
         );
       case 'tools':

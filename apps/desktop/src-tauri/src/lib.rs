@@ -226,6 +226,101 @@ async fn apply_builtin_plugin(
 }
 
 #[tauri::command]
+async fn list_marketplace_plugins(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+) -> Result<Value, String> {
+    run_typed_operation(&app, &state, "plugins-catalog", serde_json::json!({})).await
+}
+
+#[tauri::command]
+async fn validate_community_plugin(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    path: String,
+) -> Result<Value, String> {
+    let directory = verified_project(&state, &path)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "plugin-validate",
+        serde_json::json!({ "sourceDirectory": directory }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn install_community_plugin(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    path: String,
+) -> Result<Value, String> {
+    let directory = verified_project(&state, &path)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "plugin-install",
+        serde_json::json!({ "sourceDirectory": directory }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn install_bundled_plugin(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    id: String,
+) -> Result<Value, String> {
+    validate_plugin_id(&id)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "plugin-install-bundled",
+        serde_json::json!({ "pluginId": id }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn remove_community_plugin(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    id: String,
+) -> Result<Value, String> {
+    validate_plugin_id(&id)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "plugin-remove",
+        serde_json::json!({ "pluginId": id }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn create_plugin_project(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    parent: String,
+    name: String,
+) -> Result<Value, String> {
+    let directory = verified_project(&state, &parent)?;
+    if name.trim().is_empty()
+        || name.len() > 100
+        || name.chars().any(|character| character.is_control())
+    {
+        return Err("The plugin project name is invalid.".into());
+    }
+    run_typed_operation(
+        &app,
+        &state,
+        "plugin-create",
+        serde_json::json!({ "parent": directory, "name": name }),
+    )
+    .await
+}
+
+#[tauri::command]
 async fn check_developer_tools(
     app: AppHandle,
     state: State<'_, DesktopState>,
@@ -500,6 +595,7 @@ fn validate_stack_value(stack: &Value, framework: &str) -> Result<(), String> {
                 | "addDocker"
                 | "addGitHubActions"
                 | "templateId"
+                | "pluginComponents"
         )
     }) || object.get("framework").and_then(Value::as_str) != Some(framework)
         || !matches!(framework, "nextjs" | "react-vite" | "express")
@@ -518,6 +614,26 @@ fn validate_stack_value(stack: &Value, framework: &str) -> Result<(), String> {
         })
     {
         return Err("Only trusted built-in stack components are allowed.".into());
+    }
+    if let Some(plugin_components) = object.get("pluginComponents") {
+        let values = plugin_components
+            .as_array()
+            .ok_or_else(|| "Plugin components are invalid.".to_string())?;
+        if values.len() > 30
+            || values.iter().any(|component| {
+                component.as_str().is_none_or(|id| {
+                    id.len() > 128
+                        || id.contains("..")
+                        || !id.chars().all(|character| {
+                            character.is_ascii_lowercase()
+                                || character.is_ascii_digit()
+                                || matches!(character, '-' | '_' | '.')
+                        })
+                })
+            })
+        {
+            return Err("Plugin component identifiers are invalid.".into());
+        }
     }
     Ok(())
 }
@@ -676,9 +792,34 @@ fn default_template_id() -> String {
     "nextjs-blank".into()
 }
 
+fn validate_plugin_id(id: &str) -> Result<(), String> {
+    let segments = id.split('.').collect::<Vec<_>>();
+    let valid_segment = |segment: &&str| {
+        !segment.is_empty()
+            && segment.len() <= 64
+            && segment.chars().all(|character| {
+                character.is_ascii_lowercase() || character.is_ascii_digit() || character == '-'
+            })
+            && segment.chars().next().is_some_and(|character| {
+                character.is_ascii_lowercase() || character.is_ascii_digit()
+            })
+            && segment.chars().last().is_some_and(|character| {
+                character.is_ascii_lowercase() || character.is_ascii_digit()
+            })
+    };
+    let valid = id.len() <= 128 && segments.len() == 2 && segments.iter().all(valid_segment);
+    if valid {
+        Ok(())
+    } else {
+        Err("The plugin id is invalid.".into())
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{validate_create_request, validate_persisted_state, CreateRequest};
+    use super::{
+        validate_create_request, validate_persisted_state, validate_plugin_id, CreateRequest,
+    };
 
     #[test]
     fn accepts_the_desktop_template_and_github_actions_wire_names() {
@@ -725,6 +866,20 @@ mod tests {
         });
         assert!(validate_persisted_state(&value).is_err());
     }
+
+    #[test]
+    fn accepts_namespaced_plugin_ids_and_rejects_path_like_or_empty_segments() {
+        assert!(validate_plugin_id("community.editorconfig").is_ok());
+        for id in [
+            "docker",
+            ".docker",
+            "docker.",
+            "community/evil",
+            "community..evil",
+        ] {
+            assert!(validate_plugin_id(id).is_err(), "{id} should be rejected");
+        }
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -741,6 +896,12 @@ pub fn run() {
             scan_project,
             inspect_builtin_plugins,
             apply_builtin_plugin,
+            list_marketplace_plugins,
+            validate_community_plugin,
+            install_community_plugin,
+            install_bundled_plugin,
+            remove_community_plugin,
+            create_plugin_project,
             check_developer_tools,
             load_desktop_state,
             save_desktop_state,

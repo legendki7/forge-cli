@@ -40,7 +40,7 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Compatibility, generation, CLI regression, Desktop UI, scanner, and security tests
+      - name: SDK validation, plugin storage, generation, CLI, Desktop UI, scanner, and security tests
         run: pnpm test
 
   package:

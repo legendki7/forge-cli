@@ -11,24 +11,37 @@ import {
   type StackDefinition,
   type StackFramework,
 } from '@forgecli7/core';
+import {
+  createPluginSafetyReport,
+  normalizeDependencies,
+  renderPluginTemplate,
+  type ForgeKiPluginManifest,
+} from '@forgecli7/plugin-sdk';
 import { renderBuiltinTemplate, type TemplateId } from './catalog.js';
 
 export interface ProjectCreationInput {
   projectName: string;
   destinationDirectory: string;
   templateId?: string;
+  declarativePlugins?: readonly DeclarativePluginPlanSource[];
 }
+export interface DeclarativePluginPlanSource {
+  manifest: ForgeKiPluginManifest;
+  files?: Readonly<Record<string, string>>;
+}
+export type PlanOwner = StackComponentId | 'base' | `plugin:${string}`;
 export interface PlannedFile {
   path: string;
   content: string;
-  owner: StackComponentId | 'base';
+  owner: PlanOwner;
 }
 export interface PlannedDependency extends DependencyDefinition {
-  sourceComponent: StackComponentId | 'base';
+  sourceComponent: PlanOwner;
 }
 export interface PlannedPlugin {
-  id: 'docker' | 'github-actions';
+  id: string;
   files: readonly string[];
+  source: 'built-in' | 'community';
 }
 export interface ProjectGenerationPlan {
   schemaVersion: 1;
@@ -134,6 +147,11 @@ export async function createGenerationPlan(
     });
   }
 
+  const declarativePlugins = validateDeclarativePlugins(project.declarativePlugins ?? [], stack);
+  for (const source of declarativePlugins) {
+    applyDeclarativePlugin(source, stack, project.projectName, plan);
+  }
+
   plan.updatePackageJson(project.projectName, stack.packageManager);
   plan.writeEnvironmentExample();
   plan.updateGitignore(selected.has('sqlite'));
@@ -153,6 +171,7 @@ export async function createGenerationPlan(
         ? [
             {
               id: 'docker' as const,
+              source: 'built-in' as const,
               files: [
                 'Dockerfile',
                 '.dockerignore',
@@ -165,10 +184,16 @@ export async function createGenerationPlan(
         ? [
             {
               id: 'github-actions' as const,
+              source: 'built-in' as const,
               files: ['.github/workflows/ci.yml'],
             },
           ]
         : []),
+      ...declarativePlugins.map(({ manifest }) => ({
+        id: manifest.id,
+        source: 'community' as const,
+        files: plan.filesForOwner(`plugin:${manifest.id}`),
+      })),
     ],
     warnings: validation.warnings.map(({ message }) => message),
   };
@@ -226,11 +251,126 @@ export function validateExecutablePlan(plan: ProjectGenerationPlan): void {
       'The project name cannot contain path segments.',
     );
   const paths = new Set<string>();
+  const pluginIds = new Set(
+    plan.plugins.filter(({ source }) => source === 'community').map(({ id }) => id),
+  );
   for (const file of plan.files) {
     validateRelativePath(file.path);
     if (paths.has(file.path))
       throw new GenerationPlanError('FILE_COLLISION', `Duplicate generated file: ${file.path}`);
     paths.add(file.path);
+    if (file.owner.startsWith('plugin:') && !pluginIds.has(file.owner.slice('plugin:'.length)))
+      throw new GenerationPlanError('UNSAFE_FILE', `Unknown plugin file owner: ${file.owner}`);
+  }
+}
+
+function validateDeclarativePlugins(
+  sources: readonly DeclarativePluginPlanSource[],
+  stack: StackDefinition,
+): DeclarativePluginPlanSource[] {
+  const selected = new Set(stack.pluginComponents ?? []);
+  const seenPlugins = new Set<string>();
+  const seenComponents = new Set<string>();
+  const result = [...sources].sort((a, b) => a.manifest.id.localeCompare(b.manifest.id));
+  for (const source of result) {
+    const report = createPluginSafetyReport(source.manifest);
+    if (report.result === 'blocked')
+      throw new GenerationPlanError(
+        'INVALID_STACK',
+        `Plugin ${source.manifest.id} is unsafe or incompatible: ${report.errors[0]?.message ?? 'validation failed'}`,
+      );
+    if (seenPlugins.has(source.manifest.id))
+      throw new GenerationPlanError('INVALID_STACK', `Duplicate plugin ${source.manifest.id}.`);
+    seenPlugins.add(source.manifest.id);
+    for (const component of source.manifest.contributions.stackComponents ?? []) {
+      if (seenComponents.has(component.id))
+        throw new GenerationPlanError(
+          'INVALID_STACK',
+          `Duplicate plugin component ${component.id}.`,
+        );
+      seenComponents.add(component.id);
+      if (selected.has(component.id)) {
+        if (!component.supportedFrameworks.includes(stack.framework))
+          throw new GenerationPlanError(
+            'INVALID_STACK',
+            `${component.name} is not supported by ${stack.framework}.`,
+          );
+        const missing = (component.requires ?? []).filter(
+          (id) => !stack.components.includes(id as StackComponentId) && !selected.has(id),
+        );
+        if (missing.length)
+          throw new GenerationPlanError(
+            'INVALID_STACK',
+            `${component.name} requires ${missing.join(', ')}.`,
+          );
+        const conflicts = (component.conflictsWith ?? []).filter(
+          (id) => stack.components.includes(id as StackComponentId) || selected.has(id),
+        );
+        if (conflicts.length)
+          throw new GenerationPlanError(
+            'INVALID_STACK',
+            `${component.name} conflicts with ${conflicts.join(', ')}.`,
+          );
+      }
+    }
+  }
+  const unknown = [...selected].filter((id) => !seenComponents.has(id));
+  if (unknown.length)
+    throw new GenerationPlanError(
+      'INVALID_STACK',
+      `Unknown or disabled plugin components: ${unknown.join(', ')}.`,
+    );
+  return result.filter(({ manifest }) =>
+    (manifest.contributions.stackComponents ?? []).some(({ id }) => selected.has(id)),
+  );
+}
+
+function applyDeclarativePlugin(
+  source: DeclarativePluginPlanSource,
+  stack: StackDefinition,
+  projectName: string,
+  plan: PlanBuilder,
+) {
+  const { manifest } = source;
+  const owner = `plugin:${manifest.id}` as const;
+  const selected = new Set(stack.pluginComponents ?? []);
+  const applies = (condition?: { framework?: string | readonly string[]; component?: string }) => {
+    if (condition?.component && !selected.has(condition.component)) return false;
+    const supported = condition?.framework;
+    return (
+      !supported ||
+      (Array.isArray(supported)
+        ? supported.includes(stack.framework)
+        : supported === stack.framework)
+    );
+  };
+  for (const item of normalizeDependencies(manifest.contributions.dependencies))
+    plan.dependency({ ...item, sourceComponent: owner });
+  for (const item of normalizeDependencies(manifest.contributions.devDependencies))
+    plan.devDependency({ ...item, sourceComponent: owner });
+  for (const [name, command] of Object.entries(manifest.contributions.scripts ?? {}))
+    plan.script(name, command, owner);
+  for (const item of manifest.contributions.environmentVariables ?? [])
+    plan.environment({ ...item, sourceComponent: owner });
+  for (const file of manifest.contributions.generatedFiles ?? []) {
+    if (!applies(file.condition)) continue;
+    const template = file.content ?? (file.source ? source.files?.[file.source] : undefined);
+    if (template === undefined)
+      throw new GenerationPlanError(
+        'UNSAFE_FILE',
+        `Plugin ${manifest.id} is missing template source ${file.source ?? file.path}.`,
+      );
+    plan.file({
+      path: file.path,
+      content: renderPluginTemplate(template, {
+        project: {
+          name: projectName,
+          framework: stack.framework,
+          packageManager: stack.packageManager,
+        },
+      }),
+      owner,
+    });
   }
 }
 
@@ -508,7 +648,7 @@ class PlanBuilder {
   readonly files = new Map<string, PlannedFile>();
   readonly dependencies = new Map<string, PlannedDependency>();
   readonly devDependencies = new Map<string, PlannedDependency>();
-  readonly scripts = new Map<string, { command: string; owner: StackComponentId | 'base' }>();
+  readonly scripts = new Map<string, { command: string; owner: PlanOwner }>();
   readonly environmentVariables = new Map<string, EnvironmentVariableDefinition>();
   constructor(readonly framework: StackFramework) {}
 
@@ -534,7 +674,7 @@ class PlanBuilder {
   devDependency(item: PlannedDependency) {
     addDependency(this.devDependencies, item);
   }
-  script(name: string, command: string, owner: StackComponentId | 'base') {
+  script(name: string, command: string, owner: PlanOwner) {
     if (!/^[a-z0-9:_-]+$/u.test(name))
       throw new GenerationPlanError('SCRIPT_CONFLICT', `Unsafe script name: ${name}`);
     const existing = this.scripts.get(name);
@@ -558,6 +698,12 @@ class PlanBuilder {
   }
   scriptNames() {
     return [...this.scripts.keys()];
+  }
+  filesForOwner(owner: PlanOwner) {
+    return [...this.files.values()]
+      .filter((file) => file.owner === owner)
+      .map((file) => file.path)
+      .sort();
   }
   updatePackageJson(name: string, manager: StackDefinition['packageManager']) {
     const existing = this.files.get('package.json');

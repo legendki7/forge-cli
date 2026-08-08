@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "malicious.path",
+  "name": "Unsafe Path Fixture",
+  "version": "0.1.0",
+  "description": "Must be blocked before installation.",
+  "author": "ForgeKi security tests",
+  "license": "MIT",
+  "compatibility": { "forgeki": ">=0.3.0" },
+  "supportedFrameworks": ["nextjs"],
+  "permissions": ["project:generate-files"],
+  "contributions": {
+    "generatedFiles": [{ "path": "../evil.txt", "content": "must never be written\n" }]
+  }
+}

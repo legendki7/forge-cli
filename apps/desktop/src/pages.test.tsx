@@ -76,6 +76,12 @@ function bridge(): DesktopBridge {
       skippedFiles: [],
       scan: { ...scan, recommendations: [] },
     }),
+    listMarketplacePlugins: vi.fn().mockResolvedValue([]),
+    validateCommunityPlugin: vi.fn(),
+    installCommunityPlugin: vi.fn(),
+    installBundledPlugin: vi.fn(),
+    removeCommunityPlugin: vi.fn(),
+    createPluginProject: vi.fn(),
     checkDeveloperTools: vi.fn().mockResolvedValue({
       checkedAt: '2026-01-01',
       summary: ['Ready to create Next.js projects.'],

@@ -33,6 +33,8 @@ export {
   type PlannedDependency,
   type PlannedFile,
   type PlannedPlugin,
+  type PlanOwner,
+  type DeclarativePluginPlanSource,
   type ProjectCreationInput,
   type ProjectGenerationPlan,
   type ProjectGenerationResult,

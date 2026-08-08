@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@forgecli7/core": "workspace:*",
+    "@forgecli7/plugin-sdk": "workspace:*",
     "@forgecli7/plugins": "workspace:*",
     "@forgecli7/templates": "workspace:*",
     "chalk": "^5.6.0",

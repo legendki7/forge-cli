@@ -126,7 +126,7 @@ directly. Do not install both formats for the same test.
 
 ## Application navigation
 
-The persistent sidebar opens on Home and provides Create Project, Templates, Scan Project, Plugins,
+The persistent sidebar opens on Home and provides Create Project, Templates, Scan Project, Marketplace,
 Developer Tools, Activity, and Settings destinations. It has a selected state, keyboard-accessible
 buttons, accessible labels, collapsed tooltips, a responsive collapsed layout, and a persisted
 collapse preference.
@@ -140,9 +140,9 @@ collapse preference.
 - **Scan Project** uses the native picker and shared detection engine. It reports concise dependency
   counts and expands scripts/files on demand. Recommendations are deterministic rules for Docker,
   GitHub Actions, validation scripts, lockfile ambiguity, and TypeScript presence.
-- **Plugins** exposes only bundled Docker and GitHub Actions metadata, status, supported frameworks,
-  and managed files. Application requires a preview and confirmation; removal and remote loading are
-  unavailable.
+- **Marketplace** separates Installed, Built-in, Community, and Developer views. It shows permissions,
+  provenance, integrity, and safety details; local or bundled installation requires confirmation.
+  Remote discovery and downloads are unavailable.
 - **Developer Tools** checks Node.js, npm, pnpm, Yarn, Bun, Git, Docker, VS Code, Rust, and Cargo only
   after the page action is used.
 - **Activity** stores at most 200 concise local entries with event/result filters and confirmed
@@ -189,7 +189,8 @@ contents are not persisted, and nothing is uploaded.
 
 Rust deserialization rejects unknown request fields, validates enum and boolean shapes, requires an
 absolute selected parent, canonicalizes it, and allows only one native operation at a time. The worker
-validates the complete payload again with the shared project-name validator and engine.
+validates the complete payload again with shared validators and resolves declarative components from
+the installed, integrity-valid plugin registry.
 
 ### Unsafe paths and symlinks
 
@@ -200,8 +201,9 @@ and unsafe template entries, and uses staging, atomic rename, and exclusive file
 ### Arbitrary command execution
 
 The webview has no shell permission. Rust launches only the bundled `forgeki-worker` sidecar with no
-frontend-provided arguments. The worker accepts only create, scan, inspect built-ins, apply built-in,
-and check-tools operation identifiers. Tool checks use fixed executable/argument definitions,
+frontend-provided arguments. The worker accepts only allowlisted creation, scan, built-in,
+declarative-plugin, and tool-check operation identifiers. Declarative plugins are parsed data and
+never executable hooks. Tool checks use fixed executable/argument definitions,
 `shell: false`, timeouts, bounded output, and sanitization. Existing Git execution remains limited
 to the injectable `git init` call already used by the CLI.
 
@@ -215,6 +217,12 @@ to the injectable `git init` call already used by the CLI.
 | `scan_project`                              | Exact canonical directory previously selected by the user.                          |
 | `inspect_builtin_plugins`                   | Metadata only, or detection for an exact selected project.                          |
 | `apply_builtin_plugin`                      | Docker/GitHub Actions allowlist and exact selected project only.                    |
+| `list_marketplace_plugins`                  | Offline provider composition; no network or install side effect.                    |
+| `validate_community_plugin`                 | Selected local directory; closed manifest and safety report only.                   |
+| `install_community_plugin`                  | Selected source; validated app-data copy plus integrity metadata.                   |
+| `install_bundled_plugin`                    | Curated identifier allowlist; explicit local install only.                          |
+| `remove_community_plugin`                   | Bounded plugin identifier; project files are never removed.                         |
+| `create_plugin_project`                     | Selected parent and safe starter name; declarative files only.                      |
 | `check_developer_tools`                     | Fixed backend tool definitions; no frontend executable or arguments.                |
 | `load_desktop_state` / `save_desktop_state` | Bounded schema in Tauri app data only.                                              |
 | `open_project_folder` / `copy_project_path` | Exact selected or newly created project only.                                       |
@@ -243,11 +251,12 @@ directories, bundles, and installers are ignored by Git.
 
 ## Current limitations and roadmap
 
-The Visual Stack Builder supports trusted Next.js, React/Vite, and Express foundations. There is no
-plugin removal, dependency installation, deployment, security-vulnerability scanner, remote template
-fetch, account, automatic update, or community execution path. Planned future work:
+The Visual Stack Builder supports trusted Next.js, React/Vite, and Express foundations plus installed,
+validated declarative plugin components. There is no dependency installation, deployment,
+security-vulnerability scanner, remote template/plugin fetch, account, automatic update, or community
+code-execution path. Planned future work:
 
-- Community plugin marketplace
+- Remote plugin discovery, downloads, publisher verification, and publishing
 - Additional databases
 - Authentication components
 - UI component libraries

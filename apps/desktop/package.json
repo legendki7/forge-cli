@@ -25,6 +25,7 @@
   "dependencies": {
     "@forgecli7/core": "workspace:*",
     "@forgecli7/plugin-docker": "workspace:*",
+    "@forgecli7/plugin-sdk": "workspace:*",
     "@forgecli7/plugin-github-actions": "workspace:*",
     "@forgecli7/plugins": "workspace:*",
     "@forgecli7/templates": "workspace:*",

@@ -1,0 +1,47 @@
+{
+  "name": "@forgecli7/plugin-sdk",
+  "version": "0.1.0",
+  "description": "Types and validators for ForgeKi restricted declarative plugins.",
+  "keywords": [
+    "forgeki",
+    "plugin",
+    "sdk",
+    "declarative",
+    "security"
+  ],
+  "author": "ForgeKi contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/legendki7/forge-cli.git",
+    "directory": "packages/plugin-sdk"
+  },
+  "homepage": "https://github.com/legendki7/forge-cli#readme",
+  "bugs": {
+    "url": "https://github.com/legendki7/forge-cli/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch"
+  },
+  "engines": {
+    "node": "^20.0.0 || ^22.0.0 || ^24.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

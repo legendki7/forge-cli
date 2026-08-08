@@ -6,6 +6,7 @@ import { run } from './release-validation.mjs';
 
 export const packageDirectories = [
   'packages/core',
+  'packages/plugin-sdk',
   'packages/templates',
   'packages/plugins',
   'packages/plugins/plugin-docker',

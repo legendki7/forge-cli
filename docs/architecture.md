@@ -15,10 +15,13 @@ narrow typed Rust commands and never exposes a general shell or filesystem API t
   registered as isolated modules and receive dependencies through a command context.
 - **`@forgecli7/core`** owns shared contracts and the project detection engine. It uses Node.js
   filesystem APIs but has no terminal, prompt, or third-party runtime dependencies.
+- **`@forgecli7/plugin-sdk`** owns the closed declarative Manifest v1 schema, types, validators,
+  deterministic renderer, permissions, safety report, and size/path limits. It executes no plugins.
 - **`@forgecli7/templates`** owns the strongly typed built-in template catalog and deterministic
   renderers. It has no React or Tauri dependency.
 - **`@forgecli7/plugins`** owns the plugin registry and built-in plugin loader. Duplicate identifiers
-  are rejected and lookups are case-insensitive.
+  are rejected and lookups are case-insensitive. It also owns offline catalog providers, validated
+  application-data storage, SHA-256 integrity checks, bundled examples, and scanner-rule evaluation.
 - **`@forgecli7/plugin-docker`** implements Docker detection and non-destructive Docker configuration.
   It depends only on `core` and has no knowledge of Commander.js.
 - **`@forgecli7/plugin-github-actions`** generates deterministic, script-aware CI workflows from the
@@ -55,6 +58,12 @@ allowing partial interactive configuration.
 
 Plugin application must be idempotent. Files are created exclusively so an existing file, including
 one created concurrently, is never overwritten.
+
+Community plugins follow a different lifecycle: validate a closed JSON manifest, copy referenced
+data files through a staging directory, record hashes, then revalidate integrity before catalog,
+generation, or scanning. Contributions merge into the normal generation plan with
+`plugin:<plugin-id>` ownership. Built-ins cannot be overridden. The frontend may request a component,
+but the worker resolves it again from the installed valid registry and recomputes the plan.
 
 `createFileSafely()` in `core` is the common exclusive-write primitive. Plugins create required
 parent directories recursively, then use this primitive so concurrent attempts produce one writer
@@ -108,8 +117,9 @@ directories, fetches content, installs dependencies, emits timestamps, or fabric
 
 React owns presentation and typed application state. Rust owns the native folder picker, selected
 directory capability list, sidecar lifecycle, bounded local persistence, clipboard, and folder
-opening. The one-shot Node sidecar owns create, scan, built-in plugin inspection/application, and
-developer-tool checks so core TypeScript remains the business-logic source of truth.
+opening. The one-shot Node sidecar owns create, scan, built-in plugin inspection/application,
+declarative plugin validation/storage/catalog operations, and developer-tool checks so core
+TypeScript remains the business-logic source of truth.
 
 The persisted schema includes only preferences, recent-project metadata, bounded activity, and
 dismissed recommendation identifiers. Rust writes `desktop-state.json` under the Tauri application
@@ -148,7 +158,7 @@ workspace protocol remains.
 The initial intended CLI name is `@forgecli7/cli`. It is controlled by
 `packages/cli/package.json`; npm scope ownership and package availability require a manual check
 before release. A different available scoped name may be selected there without changing the `forge`
-binary mapping. All six public packages must be versioned and published together through Changesets.
+binary mapping. All seven public packages must be versioned and published together through Changesets.
 
 The CLI reads its version and supported Node.js range from its installed `package.json`. The compiled
 entry point therefore requires package metadata, the generated JavaScript and declaration files,

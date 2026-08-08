@@ -5,6 +5,7 @@ import { defaultPreferences } from './persistence';
 import { StackBuilderPage } from './StackBuilder';
 import type { DesktopBridge, DesktopCreateResult } from './types';
 import type { ProjectGenerationPlan } from '@forgecli7/templates';
+import { BUNDLED_COMMUNITY_PLUGINS, type PluginCatalogEntry } from '@forgecli7/plugins';
 
 const stack = {
   framework: 'nextjs' as const,
@@ -54,6 +55,12 @@ function bridge(): DesktopBridge {
     scanProject: vi.fn(),
     inspectBuiltinPlugins: vi.fn().mockResolvedValue([]),
     applyBuiltinPlugin: vi.fn(),
+    listMarketplacePlugins: vi.fn().mockResolvedValue([]),
+    validateCommunityPlugin: vi.fn(),
+    installCommunityPlugin: vi.fn(),
+    installBundledPlugin: vi.fn(),
+    removeCommunityPlugin: vi.fn(),
+    createPluginProject: vi.fn(),
     checkDeveloperTools: vi.fn(),
     loadDesktopState: vi.fn(),
     saveDesktopState: vi.fn(),
@@ -74,10 +81,32 @@ function setup(overrides: Partial<Parameters<typeof StackBuilderPage>[0]> = {}) 
     onStackChange: vi.fn(),
     onCreated: vi.fn(),
     onActivity: vi.fn(),
+    communityPlugins: [],
     ...overrides,
   };
   render(<StackBuilderPage {...props} />);
   return { api, props };
+}
+
+function editorConfigPlugin(): PluginCatalogEntry {
+  const manifest = BUNDLED_COMMUNITY_PLUGINS[0]!;
+  return {
+    id: manifest.id,
+    name: manifest.name,
+    description: manifest.description,
+    publisher: 'ForgeKi bundled examples',
+    version: manifest.version,
+    category: manifest.category ?? 'Community',
+    supportedFrameworks: manifest.supportedFrameworks,
+    permissions: manifest.permissions,
+    sourceType: 'bundled-curated',
+    builtIn: false,
+    trusted: false,
+    declarative: true,
+    installed: true,
+    integrity: 'valid',
+    manifest,
+  };
 }
 
 describe('visual Stack Builder', () => {
@@ -166,5 +195,26 @@ describe('visual Stack Builder', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: 'Delete My API' }));
     expect(onPresetsChange).toHaveBeenCalledWith([]);
+  });
+
+  it('selects installed plugin components and sends them to the trusted planner', async () => {
+    const { api, props } = setup({ communityPlugins: [editorConfigPlugin()] });
+    await userEvent.click(screen.getByRole('button', { name: /EditorConfig Plugin/u }));
+    expect(props.onStackChange).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginComponents: ['editorconfig'] }),
+    );
+    expect(screen.getByLabelText('Visual stack canvas')).toHaveTextContent('EditorConfig');
+    await userEvent.click(screen.getByRole('button', { name: 'Review generation plan' }));
+    expect(api.planStack).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stack: expect.objectContaining({ pluginComponents: ['editorconfig'] }),
+      }),
+    );
+  });
+
+  it('blocks generation when a saved plugin component is no longer installed', () => {
+    setup({ initialStack: { ...stack, pluginComponents: ['removed-component'] } });
+    expect(screen.getByText(/removed-component is unavailable or disabled/u)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Review generation plan' })).toBeDisabled();
   });
 });

@@ -201,4 +201,39 @@ describe('desktop worker security boundary', () => {
       }),
     ).toThrow('Invalid desktop bridge payload');
   });
+
+  it('rejects a syntactically valid plugin component that is not installed', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'forgeki-plugin-boundary-'));
+    temporaryDirectories.push(root);
+    const messages: WorkerMessage[] = [];
+    await handleWorkerEnvelope(
+      {
+        operationId: 'missing-community-plugin',
+        operation: 'plan-stack',
+        request: {
+          projectName: 'safe-app',
+          destinationDirectory: root,
+          stack: {
+            framework: 'nextjs',
+            components: ['typescript', 'plain-css'],
+            pluginComponents: ['plausible-but-not-installed'],
+            packageManager: 'pnpm',
+            initializeGit: false,
+            addDocker: false,
+            addGitHubActions: false,
+          },
+        },
+      },
+      (message) => messages.push(message),
+    );
+    expect(messages.at(-1)).toMatchObject({
+      type: 'error',
+      payload: { code: 'UNEXPECTED_ERROR' },
+    });
+    expect(messages.at(-1)?.payload).toMatchObject({
+      details: expect.stringMatching(
+        /(?:not provided by an installed, valid plugin|Unknown or disabled plugin components)/u,
+      ),
+    });
+  });
 });

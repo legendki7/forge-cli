@@ -913,6 +913,23 @@ export function SettingsPage({
           <small>Databases and ORMs are never selected automatically.</small>
         </section>
         <section className="panel">
+          <h2>Plugin platform</h2>
+          <OptionRow
+            label="Allow local community plugins"
+            checked={preferences.allowLocalCommunityPlugins}
+            onChange={(value) => update('allowLocalCommunityPlugins', value)}
+          />
+          <OptionRow
+            label="Show experimental bundled plugins"
+            checked={preferences.showExperimentalBundledPlugins}
+            onChange={(value) => update('showExperimentalBundledPlugins', value)}
+          />
+          <small>
+            There is no unsafe mode. Validation, integrity checks, and restricted permissions cannot
+            be disabled.
+          </small>
+        </section>
+        <section className="panel">
           <h2>Application</h2>
           <dl className="detail-grid">
             <Item label="Version" value="0.1.0" />
@@ -1043,6 +1060,13 @@ function activityLabel(type: ActivityType) {
       'preset-saved': 'Custom preset saved',
       'stack-generated': 'Project generated from stack',
       'stack-validation-failed': 'Stack validation failed',
+      'plugin-validated': 'Plugin validated',
+      'plugin-installed': 'Plugin installed',
+      'plugin-installation-blocked': 'Plugin installation blocked',
+      'plugin-removed': 'Plugin removed',
+      'plugin-integrity-failure': 'Plugin disabled after integrity failure',
+      'plugin-used': 'Plugin used in generation',
+      'plugin-development-created': 'Plugin development project created',
     } as const
   )[type];
 }

@@ -115,6 +115,25 @@ directory is reported as partial configuration. Unrelated workflow files and an 
 `ci.yml` are preserved byte-for-byte. Repeated and concurrent applications are safe no-ops after the
 first successful creation.
 
+## `forge plugins` and `forge plugin create`
+
+Community plugin management is local and offline:
+
+```bash
+forge plugins list
+forge plugins inspect example.editorconfig
+forge plugins validate ./examples/plugins/editorconfig
+forge plugins install ./examples/plugins/editorconfig
+forge plugins remove example.editorconfig
+forge plugin create my-plugin
+```
+
+Validation and inspection print declared permissions and a safety report. Installation accepts a
+local directory only, copies a validated snapshot into ForgeKi application data, records SHA-256
+integrity metadata, and never executes code or downloads packages. Corrupted plugins remain visible
+but disabled. Removal deletes only ForgeKi's installed copy; generated project files remain. See
+[plugin development](plugins/development.md) for the complete workflow.
+
 ## Known limitations
 
 - Detection is limited to Node.js projects and the documented frameworks.

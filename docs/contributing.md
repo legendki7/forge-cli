@@ -8,6 +8,12 @@
 Keep package APIs explicit, avoid importing package internals, and add tests at the narrowest useful
 boundary.
 
+Declarative plugin contracts belong in `packages/plugin-sdk`; storage, providers, and scanner-rule
+evaluation belong in `packages/plugins`. Community plugins must remain closed-schema data and must
+never import or execute author code. Add validator tests for permission mismatch, traversal,
+lifecycle scripts, size limits, duplicate identities, integrity failure, and generation collisions.
+Use the workflow in [plugin development](plugins/development.md).
+
 Next.js template foundations are rendered in `packages/templates/src/nextjs/template.ts`; the typed
 catalog and specialized local content live in `packages/templates/src/catalog.ts`. Keep rendering
 deterministic, centralize dependency versions, terminate generated text files with newlines, and

@@ -812,6 +812,50 @@ pre {
   }
 }
 
+.tab-row {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+
+.tab-row button[aria-selected='true'] {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.marketplace-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+  gap: 1rem;
+  align-items: start;
+}
+
+.marketplace-card {
+  min-width: 0;
+}
+
+.safety-report {
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.developer-panel {
+  max-width: 48rem;
+}
+
+.plugin-node small {
+  color: var(--primary);
+}
+
+@media (max-width: 900px) {
+  .marketplace-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

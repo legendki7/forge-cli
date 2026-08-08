@@ -6,7 +6,12 @@ import type {
   StackFramework,
   SupportedPackageManager,
 } from '@forgecli7/core';
-import type { BuiltinPluginCatalogEntry, BuiltinPluginId } from '@forgecli7/plugins';
+import type {
+  BuiltinPluginCatalogEntry,
+  BuiltinPluginId,
+  PluginCatalogEntry,
+} from '@forgecli7/plugins';
+import type { ForgeKiPluginManifest, PluginSafetyReport } from '@forgecli7/plugin-sdk';
 import type { ProjectGenerationPlan, TemplateId } from '@forgecli7/templates';
 
 export type PackageManager = SupportedPackageManager;
@@ -38,6 +43,8 @@ export interface DesktopPreferences {
   defaultTesting: 'none' | 'vitest' | 'playwright';
   rememberLastStack: boolean;
   confirmRequiredComponents: boolean;
+  allowLocalCommunityPlugins: boolean;
+  showExperimentalBundledPlugins: boolean;
 }
 
 export type ActivityType =
@@ -52,7 +59,14 @@ export type ActivityType =
   | 'preset-loaded'
   | 'preset-saved'
   | 'stack-generated'
-  | 'stack-validation-failed';
+  | 'stack-validation-failed'
+  | 'plugin-validated'
+  | 'plugin-installed'
+  | 'plugin-installation-blocked'
+  | 'plugin-removed'
+  | 'plugin-integrity-failure'
+  | 'plugin-used'
+  | 'plugin-development-created';
 export type ActivityResult = 'success' | 'warning' | 'failed';
 
 export interface ActivityEntry {
@@ -149,6 +163,7 @@ export interface DesktopProjectScan {
   plugins: BuiltinPluginCatalogEntry[];
   recommendations: ProjectRecommendation[];
   stackComponents?: DetectedStackComponent[];
+  pluginEvidence?: Array<{ pluginId: string; componentId: string; evidence: string[] }>;
 }
 
 export type DeveloperToolId =
@@ -197,6 +212,17 @@ export interface DesktopBridge {
   scanProject(path: string): Promise<DesktopProjectScan>;
   inspectBuiltinPlugins(path?: string): Promise<BuiltinPluginCatalogEntry[]>;
   applyBuiltinPlugin(request: PluginApplyRequest): Promise<PluginApplyResponse>;
+  listMarketplacePlugins(): Promise<PluginCatalogEntry[]>;
+  validateCommunityPlugin(path: string): Promise<{
+    manifest?: ForgeKiPluginManifest;
+    report: PluginSafetyReport;
+    files: string[];
+    bytes: number;
+  }>;
+  installCommunityPlugin(path: string): Promise<PluginCatalogEntry>;
+  installBundledPlugin(id: string): Promise<PluginCatalogEntry>;
+  removeCommunityPlugin(id: string): Promise<void>;
+  createPluginProject(parent: string, name: string): Promise<{ directory: string }>;
   checkDeveloperTools(): Promise<DeveloperToolsReport>;
   loadDesktopState(): Promise<unknown>;
   saveDesktopState(state: PersistedDesktopState): Promise<void>;

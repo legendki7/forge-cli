@@ -41,6 +41,8 @@ and production readiness or cross-platform support is not yet claimed.
 - Local project scanning, rule-based recommendations, developer-tool checks, and activity history
 - Offline Visual Stack Builder with shared compatibility rules, architecture review, and file preview
 - Deterministic React/Vite and Express generation with optional Tailwind, database, ORM, and tests
+- Declarative Plugin SDK with closed permissions, local integrity checks, and no code execution
+- Offline Marketplace with Built-in, Bundled, and Local providers
 
 ## Requirements
 
@@ -79,6 +81,8 @@ pnpm dev -- create my-app --no-git
 pnpm dev -- add docker
 pnpm dev -- check
 pnpm dev -- stacks list
+pnpm dev -- plugins list
+pnpm dev -- plugins validate ./examples/plugins/editorconfig
 pnpm dev -- create api --framework express --database sqlite --orm drizzle --testing vitest
 ```
 
@@ -96,6 +100,12 @@ Existing files are always preserved, so the command is safe to run repeatedly.
 | `forge add github-actions` | Add non-destructive, script-aware GitHub Actions CI            |
 | `forge add`                | List the currently available plugins                           |
 | `forge check`              | Report project framework, language, package manager, and files |
+| `forge plugins list`       | List built-in, bundled, and locally installed plugin metadata  |
+| `forge plugins inspect ID` | Show a plugin manifest, permissions, integrity, and safety     |
+| `forge plugins validate P` | Validate a local declarative plugin without installing it      |
+| `forge plugins install P`  | Copy a validated local plugin into ForgeKi application data    |
+| `forge plugins remove ID`  | Remove a local plugin registration, preserving project files   |
+| `forge plugin create NAME` | Generate an offline declarative plugin starter                 |
 
 ## Repository layout
 
@@ -106,6 +116,7 @@ forge-cli/
 |-- packages/
 |   |-- cli/                    # Commands and terminal presentation
 |   |-- core/                   # Shared contracts and domain types
+|   |-- plugin-sdk/             # Declarative manifest types and validation
 |   |-- templates/              # Template registry boundary
 |   `-- plugins/                # Plugin registry and loading
 |       `-- plugin-docker/      # Built-in Docker plugin
@@ -115,10 +126,10 @@ forge-cli/
 `-- tests/                      # Cross-package and CLI composition tests
 ```
 
-Dependencies flow inward: plugin contracts live in `core`, individual plugins implement those
-contracts without importing the CLI, and `@forgecli7/plugins` loads built-ins into a registry. The
-CLI resolves plugins through that registry, so future implementations can be added without changing
-command parsing.
+Dependencies flow inward: trusted executable-plugin contracts and project models live in `core`;
+the standalone `@forgecli7/plugin-sdk` owns the declarative Manifest v1 contract. Individual built-in
+plugins do not import the CLI. `@forgecli7/plugins` loads built-ins and composes the offline catalog,
+validated local store, bundled examples, and bounded scanner rules.
 
 The [Visual Stack Builder guide](docs/stack-builder.md) documents the supported components,
 compatibility rules, presets, shared generation plan, scanner evidence, CLI usage, and security model.
@@ -126,7 +137,7 @@ compatibility rules, presets, shared generation plan, scanner evidence, CLI usag
 ## ForgeKi Desktop
 
 ForgeKi Desktop opens on a persistent local application shell with Home, Create Project, Templates,
-Stack Builder, Scan Project, Plugins, Developer Tools, Activity, and Settings pages. Its creation wizard
+Stack Builder, Scan Project, Marketplace, Developer Tools, Activity, and Settings pages. Its creation wizard
 uses the same project-name validation, scaffolder, detection engine, and trusted built-in plugins as
 the CLI. It never installs project dependencies.
 
@@ -159,11 +170,23 @@ build command reports missing prerequisites and never installs them automaticall
 ForgeKi Desktop requires no account, API key, external API, cloud service, analytics, telemetry, or
 AI feature. Project source contents are not persisted or uploaded.
 
-## Plugin API
+## Plugin platform
 
 Every plugin exposes `id`, `name`, `description`, `detect()`, and `apply()`. Detection reports the
 current project state; application returns structured status, created-file, and skipped-file data.
 Plugins should use exclusive file creation and preserve user-owned files.
+
+Those executable hooks are reserved for trusted built-ins. Community plugins use declarative
+`forgeki.plugin.json` manifests and may contribute only allowlisted files, registry dependency
+metadata, safe package scripts, environment schemas, Stack Builder components, templates, and bounded
+scanner rules. ForgeKi never imports plugin JavaScript, runs plugin hooks, downloads marketplace
+content, installs dependencies, or permits deployment logic. Local installs are validated, copied to
+application data, hashed with SHA-256, revalidated at use, and disabled after corruption.
+
+The desktop Marketplace is an offline preview with Built-in, Bundled, Local, and Developer views.
+See [Plugin platform](docs/plugins/overview.md), [Manifest v1](docs/plugins/manifest.md), and
+[security model](docs/plugins/security.md). A complete safe example is in
+[`examples/plugins/editorconfig`](examples/plugins/editorconfig).
 
 The built-in GitHub Actions plugin writes `.github/workflows/ci.yml`. It supports pnpm, npm, Yarn,
 and Bun, runs only the available `lint`, `typecheck`, `test`, and `build` scripts, and uses Node.js
@@ -241,7 +264,7 @@ a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) and
 
 ## Roadmap
 
-- Community plugin marketplace
+- Remote plugin discovery, downloads, publisher verification, and publishing
 - Visual stack builder
 - Additional frameworks
 - macOS native validation

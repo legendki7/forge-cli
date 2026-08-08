@@ -31,6 +31,8 @@ export const defaultPreferences: DesktopPreferences = {
   defaultTesting: 'vitest',
   rememberLastStack: true,
   confirmRequiredComponents: true,
+  allowLocalCommunityPlugins: true,
+  showExperimentalBundledPlugins: false,
 };
 
 export function createDefaultDesktopState(): PersistedDesktopState {
@@ -80,6 +82,8 @@ export function migrateDesktopState(value: unknown): PersistedDesktopState {
       defaultTesting: oneOf(preferences.defaultTesting, ['none', 'vitest', 'playwright'], 'vitest'),
       rememberLastStack: boolean(preferences.rememberLastStack, true),
       confirmRequiredComponents: boolean(preferences.confirmRequiredComponents, true),
+      allowLocalCommunityPlugins: boolean(preferences.allowLocalCommunityPlugins, true),
+      showExperimentalBundledPlugins: boolean(preferences.showExperimentalBundledPlugins, false),
     },
     recentProjects: recent.map(readRecentProject).filter(isPresent).slice(0, MAX_RECENT_PROJECTS),
     activity: activity.map(readActivity).filter(isPresent).slice(0, MAX_ACTIVITY_ENTRIES),
@@ -179,6 +183,13 @@ function readActivity(value: unknown): ActivityEntry | undefined {
         'preset-saved',
         'stack-generated',
         'stack-validation-failed',
+        'plugin-validated',
+        'plugin-installed',
+        'plugin-installation-blocked',
+        'plugin-removed',
+        'plugin-integrity-failure',
+        'plugin-used',
+        'plugin-development-created',
       ],
       'plugin-warning',
     ),
@@ -220,6 +231,14 @@ function readStackDefinition(value: unknown): StackDefinition | undefined {
     addDocker: boolean(value.addDocker, false),
     addGitHubActions: boolean(value.addGitHubActions, false),
     ...(safeText(value.templateId, 100) ? { templateId: safeText(value.templateId, 100) } : {}),
+    ...(Array.isArray(value.pluginComponents)
+      ? {
+          pluginComponents: value.pluginComponents
+            .map((entry) => safeText(entry, 128))
+            .filter((entry) => /^[a-z0-9][a-z0-9._-]*$/u.test(entry) && !entry.includes('..'))
+            .slice(0, 30),
+        }
+      : {}),
   };
   return validateStack(definition).valid ? definition : undefined;
 }

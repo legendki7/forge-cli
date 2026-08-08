@@ -10,6 +10,8 @@ import {
   type StackFramework,
 } from '@forgecli7/core/stacks';
 import type { ProjectGenerationPlan } from '@forgecli7/templates';
+import type { PluginCatalogEntry } from '@forgecli7/plugins';
+import type { PluginStackComponent } from '@forgecli7/plugin-sdk';
 import type {
   ActivityEntry,
   CustomStackPreset,
@@ -18,7 +20,8 @@ import type {
   DesktopPreferences,
 } from './types';
 
-const categories: readonly StackComponentCategory[] = [
+type CatalogCategory = StackComponentCategory | 'infrastructure';
+const categories: readonly CatalogCategory[] = [
   'framework',
   'language',
   'styling',
@@ -27,6 +30,7 @@ const categories: readonly StackComponentCategory[] = [
   'testing',
   'tooling',
   'runtime',
+  'infrastructure',
 ];
 
 export interface StackBuilderProps {
@@ -38,6 +42,7 @@ export interface StackBuilderProps {
   onStackChange(stack: StackDefinition): void;
   onCreated(result: DesktopCreateResult): void;
   onActivity(entry: Omit<ActivityEntry, 'id' | 'timestamp'>): void;
+  communityPlugins: PluginCatalogEntry[];
 }
 
 export function StackBuilderPage({
@@ -49,11 +54,12 @@ export function StackBuilderPage({
   onStackChange,
   onCreated,
   onActivity,
+  communityPlugins,
 }: StackBuilderProps) {
   const [stack, setStack] = useState<StackDefinition>(initialStack ?? defaultStack(preferences));
-  const [selectedNode, setSelectedNode] = useState<StackComponentId>(stack.framework);
+  const [selectedNode, setSelectedNode] = useState<string>(stack.framework);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<StackComponentCategory | 'all'>('all');
+  const [category, setCategory] = useState<CatalogCategory | 'all'>('all');
   const [feedback, setFeedback] = useState('Select components to compose your application.');
   const [projectName, setProjectName] = useState('my-forgeki-app');
   const [destination, setDestination] = useState(preferences.defaultDestination);
@@ -62,8 +68,46 @@ export function StackBuilderPage({
   const [busy, setBusy] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const validation = useMemo(() => validateStack(stack), [stack]);
+  const pluginComponents = useMemo(
+    () =>
+      communityPlugins.flatMap((plugin) =>
+        (plugin.manifest?.contributions.stackComponents ?? []).map((component) => ({
+          component,
+          plugin,
+        })),
+      ),
+    [communityPlugins],
+  );
+  const pluginIssue = useMemo(() => {
+    const selectedIds = new Set(stack.pluginComponents ?? []);
+    for (const id of selectedIds) {
+      const found = pluginComponents.find(({ component }) => component.id === id);
+      if (!found)
+        return `Plugin component ${id} is unavailable or disabled. Remove it or reinstall its plugin.`;
+      if (!found.component.supportedFrameworks.includes(stack.framework))
+        return `${found.component.name} is not supported by ${getStackComponent(stack.framework).name}.`;
+      const missing = (found.component.requires ?? []).filter(
+        (required) =>
+          !stack.components.includes(required as StackComponentId) && !selectedIds.has(required),
+      );
+      if (missing.length) return `${found.component.name} requires ${missing.join(', ')}.`;
+      const conflicts = (found.component.conflictsWith ?? []).filter(
+        (conflict) =>
+          stack.components.includes(conflict as StackComponentId) || selectedIds.has(conflict),
+      );
+      if (conflicts.length)
+        return `${found.component.name} conflicts with ${conflicts.join(', ')}.`;
+    }
+    return undefined;
+  }, [pluginComponents, stack]);
   const selected = new Set(validation.resolvedComponents);
-  const selectedComponent = getStackComponent(selectedNode);
+  const selectedBuiltinComponent = isBuiltinNode(selectedNode)
+    ? getStackComponent(selectedNode)
+    : undefined;
+  const selectedPluginComponent = pluginComponents.find(
+    ({ component }) => component.id === selectedNode,
+  )?.component;
+  const selectedComponent = selectedBuiltinComponent ?? selectedPluginComponent;
 
   const visible = BUILTIN_STACK_COMPONENTS.filter((component) => {
     const query = search.trim().toLowerCase();
@@ -122,8 +166,31 @@ export function StackBuilderPage({
     );
   }
 
+  function togglePlugin(component: PluginStackComponent) {
+    setSelectedNode(component.id);
+    if (!component.supportedFrameworks.includes(stack.framework)) {
+      setFeedback(
+        `${component.name} is not compatible with ${getStackComponent(stack.framework).name}.`,
+      );
+      return;
+    }
+    const next = new Set(stack.pluginComponents ?? []);
+    if (next.has(component.id)) next.delete(component.id);
+    else next.add(component.id);
+    commit({ ...stack, pluginComponents: [...next].sort() });
+    setFeedback(
+      `${component.name} ${next.has(component.id) ? 'added' : 'removed'} from its restricted plugin.`,
+    );
+  }
+
   function loadPreset(definition: StackDefinition, name: string) {
-    commit({ ...definition, components: [...definition.components] });
+    commit({
+      ...definition,
+      components: [...definition.components],
+      ...(definition.pluginComponents
+        ? { pluginComponents: [...definition.pluginComponents] }
+        : {}),
+    });
     setSelectedNode(definition.framework);
     setFeedback(`${name} loaded. Review every component before generation.`);
     onActivity({ type: 'preset-loaded', result: 'success', message: `${name} preset loaded.` });
@@ -139,7 +206,11 @@ export function StackBuilderPage({
       id: `custom-${Date.now()}`,
       name: name.trim().slice(0, 120),
       description: description.slice(0, 300),
-      definition: { ...stack, components: [...stack.components] },
+      definition: {
+        ...stack,
+        components: [...stack.components],
+        ...(stack.pluginComponents ? { pluginComponents: [...stack.pluginComponents] } : {}),
+      },
       createdAt: now,
       updatedAt: now,
     };
@@ -173,7 +244,13 @@ export function StackBuilderPage({
           ...preset,
           id: `custom-${Date.now()}`,
           name: `${preset.name} copy`.slice(0, 120),
-          definition: { ...preset.definition, components: [...preset.definition.components] },
+          definition: {
+            ...preset.definition,
+            components: [...preset.definition.components],
+            ...(preset.definition.pluginComponents
+              ? { pluginComponents: [...preset.definition.pluginComponents] }
+              : {}),
+          },
           createdAt: now,
           updatedAt: now,
         },
@@ -193,8 +270,10 @@ export function StackBuilderPage({
   }
 
   async function review() {
-    if (!validation.valid) {
-      setFeedback(`${validation.errors[0]!.message} ${validation.errors[0]!.resolution}`);
+    if (!validation.valid || pluginIssue) {
+      setFeedback(
+        pluginIssue ?? `${validation.errors[0]!.message} ${validation.errors[0]!.resolution}`,
+      );
       onActivity({
         type: 'stack-validation-failed',
         result: 'failed',
@@ -362,6 +441,34 @@ export function StackBuilderPage({
                 </button>
               );
             })}
+            {pluginComponents
+              .filter(
+                ({ component }) =>
+                  (category === 'all' || component.category === category) &&
+                  `${component.name} ${component.description}`
+                    .toLowerCase()
+                    .includes(search.toLowerCase()),
+              )
+              .map(({ component, plugin }) => {
+                const unsupported = !component.supportedFrameworks.includes(stack.framework);
+                const active = (stack.pluginComponents ?? []).includes(component.id);
+                return (
+                  <button
+                    key={`${plugin.id}:${component.id}`}
+                    className={`component-card ${active ? 'selected' : ''} ${unsupported ? 'disabled' : ''}`}
+                    aria-pressed={active}
+                    aria-disabled={unsupported}
+                    onClick={() => togglePlugin(component)}
+                  >
+                    <span>
+                      <strong>{component.name}</strong>
+                      <small>Plugin · {plugin.name}</small>
+                    </span>
+                    <small>{component.description}</small>
+                    {unsupported && <em>Not supported by this framework</em>}
+                  </button>
+                );
+              })}
           </div>
         </section>
 
@@ -386,11 +493,28 @@ export function StackBuilderPage({
                     <span aria-hidden="true">├─</span> {getStackComponent(id).name}
                   </button>
                 ))}
+              {(stack.pluginComponents ?? []).map((id) => {
+                const found = pluginComponents.find(({ component }) => component.id === id);
+                return (
+                  <button
+                    key={id}
+                    className={found ? 'plugin-node' : 'conflict'}
+                    onClick={() => setSelectedNode(id)}
+                  >
+                    <span aria-hidden="true">├─</span> {found?.component.name ?? id}{' '}
+                    <small>Plugin</small>
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <div className={`compatibility-banner ${validation.valid ? 'valid' : 'conflict'}`}>
-            <strong>{validation.valid ? 'Compatible stack' : 'Compatibility issue'}</strong>
-            <p>{validation.errors[0]?.message ?? feedback}</p>
+          <div
+            className={`compatibility-banner ${validation.valid && !pluginIssue ? 'valid' : 'conflict'}`}
+          >
+            <strong>
+              {validation.valid && !pluginIssue ? 'Compatible stack' : 'Compatibility issue'}
+            </strong>
+            <p>{pluginIssue ?? validation.errors[0]?.message ?? feedback}</p>
             {validation.errors[0] && <p>{validation.errors[0].resolution}</p>}
             {validation.errors[0]?.code === 'missing-requirement' && (
               <div className="compatibility-actions">
@@ -402,35 +526,43 @@ export function StackBuilderPage({
         </section>
 
         <aside className="stack-inspector" aria-label="Configuration inspector">
-          <h2>{selectedComponent.name}</h2>
-          <span className="badge">{title(selectedComponent.category)}</span>
-          <p>{selectedComponent.description}</p>
+          <h2>{selectedComponent?.name ?? selectedNode}</h2>
+          <span className="badge">
+            {selectedComponent ? title(selectedComponent.category) : 'Unavailable plugin'}
+          </span>
+          <p>
+            {selectedComponent?.description ??
+              'This saved component is unavailable because its plugin was removed or disabled.'}
+          </p>
+          {!isBuiltinNode(selectedNode) && (
+            <p className="notice info">Restricted declarative plugin contribution</p>
+          )}
           <h3>Supported frameworks</h3>
           <p>
-            {selectedComponent.supportedFrameworks
+            {selectedComponent?.supportedFrameworks
               .map((id) => getStackComponent(id).name)
-              .join(', ')}
+              .join(', ') ?? 'None'}
           </p>
-          {preferences.mode === 'advanced' && (
+          {preferences.mode === 'advanced' && selectedBuiltinComponent && (
             <>
               <h3>Dependencies</h3>
               <CodeList
                 values={[
-                  ...selectedComponent.dependencies.map(
+                  ...selectedBuiltinComponent.dependencies.map(
                     ({ name, version }) => `${name}@${version}`,
                   ),
-                  ...selectedComponent.devDependencies.map(
+                  ...selectedBuiltinComponent.devDependencies.map(
                     ({ name, version }) => `${name}@${version} (dev)`,
                   ),
                 ]}
               />
               <h3>Generated files</h3>
-              <CodeList values={selectedComponent.generatedFiles.map(({ path }) => path)} />
+              <CodeList values={selectedBuiltinComponent.generatedFiles.map(({ path }) => path)} />
               <h3>Compatibility rules</h3>
               <CodeList
                 values={[
-                  ...selectedComponent.requires.map(({ message }) => message),
-                  ...selectedComponent.conflictsWith.map(
+                  ...selectedBuiltinComponent.requires.map(({ message }) => message),
+                  ...selectedBuiltinComponent.conflictsWith.map(
                     (id) => `Conflicts with ${getStackComponent(id).name}`,
                   ),
                 ]}
@@ -465,7 +597,11 @@ export function StackBuilderPage({
           <span>Parent destination</span>
           <button onClick={chooseDestination}>{destination || 'Choose folder'}</button>
         </div>
-        <button className="primary" disabled={busy || !validation.valid} onClick={review}>
+        <button
+          className="primary"
+          disabled={busy || !validation.valid || Boolean(pluginIssue)}
+          onClick={review}
+        >
           {busy ? 'Planning…' : 'Review generation plan'}
         </button>
       </section>
@@ -491,6 +627,13 @@ export function StackBuilderPage({
               label="Components"
               value={validation.resolvedComponents
                 .map((id) => getStackComponent(id).name)
+                .concat(
+                  (stack.pluginComponents ?? []).map(
+                    (id) =>
+                      pluginComponents.find(({ component }) => component.id === id)?.component
+                        .name ?? id,
+                  ),
+                )
                 .join(', ')}
             />
             <Item
@@ -574,6 +717,9 @@ function title(value: string) {
     .split('-')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+function isBuiltinNode(value: string): value is StackComponentId {
+  return BUILTIN_STACK_COMPONENTS.some(({ id }) => id === value);
 }
 function CodeList({ values }: { values: string[] }) {
   return values.length ? (

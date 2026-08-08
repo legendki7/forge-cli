@@ -12,6 +12,8 @@ import type {
 } from '../types';
 import type { ProjectGenerationPlan } from '@forgecli7/templates';
 import type { BuiltinPluginCatalogEntry } from '@forgecli7/plugins';
+import type { PluginCatalogEntry } from '@forgecli7/plugins';
+import type { ForgeKiPluginManifest, PluginSafetyReport } from '@forgecli7/plugin-sdk';
 
 export const tauriBridge: DesktopBridge = {
   selectDestination() {
@@ -54,6 +56,35 @@ export const tauriBridge: DesktopBridge = {
 
   applyBuiltinPlugin(request) {
     return invoke<PluginApplyResponse>('apply_builtin_plugin', { request });
+  },
+
+  listMarketplacePlugins() {
+    return invoke<PluginCatalogEntry[]>('list_marketplace_plugins');
+  },
+
+  validateCommunityPlugin(path) {
+    return invoke<{
+      manifest?: ForgeKiPluginManifest;
+      report: PluginSafetyReport;
+      files: string[];
+      bytes: number;
+    }>('validate_community_plugin', { path });
+  },
+
+  installCommunityPlugin(path) {
+    return invoke<PluginCatalogEntry>('install_community_plugin', { path });
+  },
+
+  installBundledPlugin(id) {
+    return invoke<PluginCatalogEntry>('install_bundled_plugin', { id });
+  },
+
+  removeCommunityPlugin(id) {
+    return invoke('remove_community_plugin', { id });
+  },
+
+  createPluginProject(parent, name) {
+    return invoke<{ directory: string }>('create_plugin_project', { parent, name });
   },
 
   checkDeveloperTools() {

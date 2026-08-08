@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Command } from 'commander';
@@ -71,6 +71,8 @@ describe('ForgeKi program', () => {
       'add',
       'check',
       'stacks',
+      'plugins',
+      'plugin',
     ]);
   });
 
@@ -414,5 +416,101 @@ describe('ForgeKi program', () => {
     });
     expect(exitCode).toBe(1);
     expect(output[0]).toContain('cannot directly configure a server database');
+  });
+
+  it('lists, inspects, installs, and removes restricted declarative plugins', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'forge-plugin-cli-'));
+    temporaryDirectories.push(cwd);
+    const storage = path.join(cwd, 'storage');
+    const source = path.join(cwd, 'editorconfig-plugin');
+    await mkdir(source);
+    const manifest = structuredClone(
+      (await import('../packages/plugins/src/community.js')).BUNDLED_COMMUNITY_PLUGINS[0]!,
+    );
+    await writeFile(
+      path.join(source, 'forgeki.plugin.json'),
+      (await import('../packages/plugin-sdk/src/index.js')).serializePluginManifest(manifest),
+    );
+    const output: string[] = [];
+    const context = {
+      cwd,
+      pluginStorageRoot: storage,
+      write: (message: string) => output.push(message),
+    };
+    await createProgram(context).parseAsync(['plugins', 'validate', source], { from: 'user' });
+    await createProgram(context).parseAsync(['plugins', 'install', source], { from: 'user' });
+    await createProgram(context).parseAsync(['plugins', 'list'], { from: 'user' });
+    await createProgram(context).parseAsync(['plugins', 'inspect', 'community.editorconfig'], {
+      from: 'user',
+    });
+    await createProgram(context).parseAsync(['plugins', 'remove', 'community.editorconfig'], {
+      from: 'user',
+    });
+    expect(output.join('\n')).toContain('Safe to install');
+    expect(output.join('\n')).toContain('Community · Installed · Restricted');
+    expect(output.join('\n')).toContain('No plugin code was executed');
+    expect(output.at(-1)).toContain('Existing generated projects were not modified');
+  });
+
+  it('blocks unsafe path and lifecycle plugin fixtures', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'forge-plugin-unsafe-'));
+    temporaryDirectories.push(cwd);
+    const output: string[] = [];
+    let exitCode = 0;
+    const sdk = await import('../packages/plugin-sdk/src/index.js');
+    const community = await import('../packages/plugins/src/community.js');
+    type MutableManifest = {
+      permissions: string[];
+      contributions: {
+        generatedFiles?: Array<{ path: string; content: string }>;
+        scripts?: Record<string, string>;
+      };
+    } & Record<string, unknown>;
+    for (const [name, mutate] of [
+      [
+        'path',
+        (manifest: MutableManifest) =>
+          (manifest.contributions.generatedFiles = [{ path: '../evil.txt', content: 'bad' }]),
+      ],
+      [
+        'lifecycle',
+        (manifest: MutableManifest) => {
+          manifest.permissions.push('project:add-scripts');
+          manifest.contributions.scripts = { postinstall: 'node evil.js' };
+        },
+      ],
+    ] as const) {
+      const source = path.join(cwd, name);
+      await mkdir(source);
+      const manifest = structuredClone(
+        community.BUNDLED_COMMUNITY_PLUGINS[0]!,
+      ) as unknown as MutableManifest;
+      mutate(manifest);
+      await writeFile(path.join(source, 'forgeki.plugin.json'), JSON.stringify(manifest));
+      await createProgram({
+        cwd,
+        pluginStorageRoot: path.join(cwd, 'storage'),
+        write: (message) => output.push(message),
+        setExitCode: (code) => (exitCode = code),
+      }).parseAsync(['plugins', 'install', source], { from: 'user' });
+    }
+    expect(exitCode).toBe(1);
+    expect(output.join('\n')).toContain('Blocked');
+    expect(sdk.validatePluginManifest).toBeTypeOf('function');
+  });
+
+  it('creates a plugin developer project', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'forge-plugin-create-'));
+    temporaryDirectories.push(cwd);
+    await createProgram({ cwd, write: () => undefined }).parseAsync(
+      ['plugin', 'create', 'my-plugin'],
+      { from: 'user' },
+    );
+    await expect(
+      readFile(path.join(cwd, 'my-plugin', 'forgeki.plugin.json'), 'utf8'),
+    ).resolves.toContain('community.my-plugin');
+    await expect(
+      readFile(path.join(cwd, 'my-plugin', 'templates', 'example.txt'), 'utf8'),
+    ).resolves.toContain('{{project.name}}');
   });
 });

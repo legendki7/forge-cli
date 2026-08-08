@@ -57,6 +57,8 @@ export async function validatePackedInstallation(root, archives, dependencies = 
         ['create', '--help'],
         ['add', '--help'],
         ['check', '--help'],
+        ['plugins', '--help'],
+        ['plugin', '--help'],
       ]) {
         const output = invoke(args);
         if (!output.includes('Usage:')) throw new Error(`Packed forge ${args.join(' ')} failed.`);
@@ -121,10 +123,12 @@ async function validatePublicImports(installationDirectory, runner) {
     consumer,
     [
       "import { validateProjectName } from '@forgecli7/core';",
+      "import { validatePluginManifest } from '@forgecli7/plugin-sdk';",
       "import { renderNextjsTemplate } from '@forgecli7/templates';",
       "import { dockerPlugin } from '@forgecli7/plugin-docker';",
       "import { githubActionsPlugin } from '@forgecli7/plugin-github-actions';",
       "if (!validateProjectName('consumer-app').valid) throw new Error('core export failed');",
+      "if (validatePluginManifest({}).valid) throw new Error('plugin SDK export failed');",
       "if (renderNextjsTemplate('consumer-app', 'pnpm').length === 0) throw new Error('templates export failed');",
       "if (dockerPlugin.id !== 'docker') throw new Error('Docker export failed');",
       "if (githubActionsPlugin.id !== 'github-actions') throw new Error('GitHub Actions export failed');",

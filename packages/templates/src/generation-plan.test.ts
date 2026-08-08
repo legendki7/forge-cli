@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { getStackPreset, type StackDefinition } from '@forgecli7/core';
+import { defineForgeKiPlugin } from '@forgecli7/plugin-sdk';
 import {
   createGenerationPlan,
   executeGenerationPlan,
@@ -122,5 +123,118 @@ describe('generation plans', () => {
     } finally {
       await rm(parent, { recursive: true, force: true });
     }
+  });
+
+  it('merges validated declarative plugin contributions with source attribution', async () => {
+    const plugin = defineForgeKiPlugin({
+      manifestVersion: 1,
+      id: 'community.example',
+      name: 'Example',
+      version: '0.1.0',
+      description: 'Adds a deterministic example.',
+      author: 'Test publisher',
+      license: 'MIT',
+      compatibility: { forgeki: '>=0.3.0' },
+      supportedFrameworks: ['express'],
+      permissions: [
+        'project:generate-files',
+        'project:add-dependencies',
+        'project:add-scripts',
+        'project:add-env-schema',
+        'project:add-stack-components',
+      ],
+      contributions: {
+        stackComponents: [
+          {
+            id: 'example',
+            name: 'Example',
+            description: 'Example component.',
+            category: 'tooling',
+            supportedFrameworks: ['express'],
+          },
+        ],
+        generatedFiles: [
+          {
+            path: 'src/example.txt',
+            content: '{{project.name}} {{project.framework}} {{project.packageManager}}',
+            condition: { component: 'example' },
+          },
+        ],
+        dependencies: { zod: '^4.0.0' },
+        scripts: { validate: 'zod-check' },
+        environmentVariables: [
+          {
+            name: 'EXAMPLE_URL',
+            description: 'Example URL.',
+            required: false,
+            secret: false,
+            exampleValue: 'http://localhost:3000',
+          },
+        ],
+      },
+    });
+    const stack = {
+      ...definition('express', ['vitest']),
+      pluginComponents: ['example'],
+    };
+    const plan = await createGenerationPlan(stack, {
+      ...input,
+      declarativePlugins: [{ manifest: plugin }],
+    });
+    expect(plan.files.find(({ path }) => path === 'src/example.txt')).toEqual({
+      path: 'src/example.txt',
+      content: 'planned-app express pnpm\n',
+      owner: 'plugin:community.example',
+    });
+    expect(plan.dependencies).toContainEqual({
+      name: 'zod',
+      version: '^4.0.0',
+      sourceComponent: 'plugin:community.example',
+    });
+    expect(plan.plugins.at(-1)).toMatchObject({
+      id: 'community.example',
+      source: 'community',
+      files: expect.arrayContaining(['.env.example', 'src/example.txt']),
+    });
+    expect(() => validateExecutablePlan(plan)).not.toThrow();
+  });
+
+  it('rejects missing, duplicate, colliding, and incompatible plugin contributions', async () => {
+    const base = defineForgeKiPlugin({
+      manifestVersion: 1,
+      id: 'community.collision',
+      name: 'Collision',
+      version: '0.1.0',
+      description: 'Collision fixture.',
+      author: 'Tests',
+      license: 'MIT',
+      compatibility: { forgeki: '>=0.3.0' },
+      supportedFrameworks: ['express'],
+      permissions: ['project:generate-files', 'project:add-stack-components'],
+      contributions: {
+        stackComponents: [
+          {
+            id: 'collision',
+            name: 'Collision',
+            description: 'Collision fixture.',
+            category: 'tooling',
+            supportedFrameworks: ['express'],
+          },
+        ],
+        generatedFiles: [
+          { path: 'package.json', content: 'not allowed', condition: { component: 'collision' } },
+        ],
+      },
+    });
+    const stack = { ...definition('express', ['vitest']), pluginComponents: ['collision'] };
+    await expect(
+      createGenerationPlan(stack, { ...input, declarativePlugins: [{ manifest: base }] }),
+    ).rejects.toMatchObject({ code: 'FILE_COLLISION' });
+    await expect(
+      createGenerationPlan(
+        { ...definition('express', ['vitest']), pluginComponents: ['missing'] },
+        { ...input, declarativePlugins: [] },
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_STACK' });
   });
 });

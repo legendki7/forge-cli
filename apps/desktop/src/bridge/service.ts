@@ -10,9 +10,16 @@ import {
 } from '@forgecli7/core';
 import {
   applyBuiltinPlugin,
+  BuiltInCatalogProvider,
+  BundledCommunityCatalogProvider,
   inspectBuiltinPlugins,
   isBuiltinPluginId,
+  LocalInstalledCatalogProvider,
   loadPlugins,
+  PluginStore,
+  composePluginCatalog,
+  createPluginStarter,
+  evaluatePluginScannerRules,
 } from '@forgecli7/plugins';
 import {
   createGenerationPlan,
@@ -33,7 +40,19 @@ import type {
 
 export interface WorkerEnvelope {
   operationId: string;
-  operation?: 'create' | 'plan-stack' | 'scan' | 'inspect-plugins' | 'apply-plugin' | 'check-tools';
+  operation?:
+    | 'create'
+    | 'plan-stack'
+    | 'scan'
+    | 'inspect-plugins'
+    | 'apply-plugin'
+    | 'check-tools'
+    | 'plugins-catalog'
+    | 'plugin-validate'
+    | 'plugin-install'
+    | 'plugin-install-bundled'
+    | 'plugin-remove'
+    | 'plugin-create';
   request: unknown;
 }
 
@@ -81,6 +100,7 @@ export async function handleWorkerEnvelope(
           projectName: request.projectName,
           destinationDirectory: request.destinationDirectory,
           templateId: request.templateId,
+          declarativePlugins: await declarativeSources(request.stack),
         })
       : undefined;
     if (
@@ -247,11 +267,31 @@ export async function scanProjectDirectory(directory: string): Promise<DesktopPr
       message: 'TypeScript configuration is present.',
     });
   }
+  const installed = await new PluginStore().list().catch(() => []);
+  const pluginEvidence = (
+    await Promise.all(
+      installed.map((plugin) =>
+        evaluatePluginScannerRules(plugin, {
+          directory: safeDirectory,
+          dependencies: project.dependencies,
+          devDependencies: project.devDependencies,
+          scripts: project.scripts,
+        }),
+      ),
+    )
+  ).flat();
+  const pluginStack = pluginEvidence.map((item) => ({
+    id: item.componentId,
+    state: 'detected' as const,
+    evidence: item.evidence.map((value) => `Detected via plugin: ${item.pluginId} (${value})`),
+  }));
   return {
     ...project,
     projectName: project.projectName ?? path.basename(safeDirectory),
     plugins,
     recommendations,
+    stackComponents: [...project.stackComponents, ...pluginStack],
+    pluginEvidence,
   };
 }
 
@@ -264,7 +304,10 @@ async function handleOperation(
     let result: unknown;
     if (operation === 'plan-stack') {
       const input = readStackPlanRequest(request);
-      result = await createGenerationPlan(input.stack, input);
+      result = await createGenerationPlan(input.stack, {
+        ...input,
+        declarativePlugins: await declarativeSources(input.stack),
+      });
     } else if (operation === 'scan') {
       result = await scanProjectDirectory(readDirectoryRequest(request));
     } else if (operation === 'inspect-plugins') {
@@ -277,6 +320,30 @@ async function handleOperation(
         ...applied,
         scan: await scanProjectDirectory(input.projectDirectory),
       } satisfies PluginApplyResponse;
+    } else if (operation === 'plugins-catalog') {
+      if (!isEmptyRecord(request)) invalidPayload();
+      const store = new PluginStore();
+      result = await composePluginCatalog([
+        new BuiltInCatalogProvider(),
+        new BundledCommunityCatalogProvider(store),
+        new LocalInstalledCatalogProvider(store),
+      ]);
+    } else if (operation === 'plugin-validate') {
+      result = await new PluginStore().validate(readPluginDirectoryRequest(request));
+    } else if (operation === 'plugin-install') {
+      result = catalogInstalled(
+        await new PluginStore().install(readPluginDirectoryRequest(request)),
+      );
+    } else if (operation === 'plugin-install-bundled') {
+      result = catalogInstalled(
+        await new PluginStore().installBundled(readPluginIdRequest(request)),
+      );
+    } else if (operation === 'plugin-remove') {
+      await new PluginStore().remove(readPluginIdRequest(request));
+      result = { removed: true };
+    } else if (operation === 'plugin-create') {
+      const input = readPluginCreateRequest(request);
+      result = { directory: await createPluginStarter(input.parent, input.name) };
     } else {
       if (!isEmptyRecord(request)) invalidPayload();
       result = await checkDeveloperTools();
@@ -315,10 +382,37 @@ function readStackPlanRequest(value: unknown): {
 }
 
 function readStackDefinition(value: unknown): StackDefinition {
-  if (!isRecord(value) || !isStackFramework(value.framework) || !Array.isArray(value.components))
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some(
+      (key) =>
+        ![
+          'framework',
+          'components',
+          'packageManager',
+          'initializeGit',
+          'addDocker',
+          'addGitHubActions',
+          'templateId',
+          'pluginComponents',
+        ].includes(key),
+    ) ||
+    !isStackFramework(value.framework) ||
+    !Array.isArray(value.components)
+  )
     invalidPayload();
   if (!value.components.every(isStackComponentId)) invalidPayload();
   if (!isPackageManager(value.packageManager)) invalidPayload();
+  if (
+    value.pluginComponents !== undefined &&
+    (!Array.isArray(value.pluginComponents) ||
+      value.pluginComponents.length > 30 ||
+      value.pluginComponents.some(
+        (id) =>
+          typeof id !== 'string' || !/^[a-z0-9][a-z0-9._-]{0,127}$/u.test(id) || id.includes('..'),
+      ))
+  )
+    invalidPayload();
   if (
     typeof value.initializeGit !== 'boolean' ||
     typeof value.addDocker !== 'boolean' ||
@@ -333,9 +427,73 @@ function readStackDefinition(value: unknown): StackDefinition {
     addDocker: value.addDocker,
     addGitHubActions: value.addGitHubActions,
     ...(typeof value.templateId === 'string' ? { templateId: value.templateId } : {}),
+    ...(Array.isArray(value.pluginComponents)
+      ? {
+          pluginComponents: value.pluginComponents.filter(
+            (id): id is string =>
+              typeof id === 'string' &&
+              /^[a-z0-9][a-z0-9._-]{0,127}$/u.test(id) &&
+              !id.includes('..'),
+          ),
+        }
+      : {}),
   };
   if (!validateStack(definition).valid) invalidPayload();
   return definition;
+}
+
+async function declarativeSources(stack: StackDefinition) {
+  return stack.pluginComponents?.length ? new PluginStore().loadPlanSources() : [];
+}
+
+function catalogInstalled(installed: Awaited<ReturnType<PluginStore['install']>>) {
+  const manifest = installed.manifest;
+  return {
+    id: manifest.id,
+    name: manifest.name,
+    description: manifest.description,
+    publisher: typeof manifest.author === 'string' ? manifest.author : manifest.author.name,
+    version: manifest.version,
+    category: manifest.category ?? 'Community',
+    supportedFrameworks: manifest.supportedFrameworks,
+    permissions: manifest.permissions,
+    sourceType: installed.metadata.sourceType,
+    builtIn: false,
+    trusted: false,
+    declarative: true,
+    installed: true,
+    integrity: installed.integrity,
+    installedAt: installed.metadata.installedAt,
+    manifest,
+  };
+}
+
+function readPluginDirectoryRequest(value: unknown): string {
+  if (!isRecord(value) || Object.keys(value).length !== 1) invalidPayload();
+  return validateAbsoluteDirectory(value.sourceDirectory);
+}
+
+function readPluginIdRequest(value: unknown): string {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).length !== 1 ||
+    typeof value.pluginId !== 'string' ||
+    !/^[a-z0-9-]+\.[a-z0-9-]+$/u.test(value.pluginId)
+  )
+    invalidPayload();
+  return value.pluginId;
+}
+
+function readPluginCreateRequest(value: unknown): { parent: string; name: string } {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some((key) => key !== 'parent' && key !== 'name') ||
+    typeof value.name !== 'string' ||
+    !value.name.trim() ||
+    value.name.length > 100
+  )
+    invalidPayload();
+  return { parent: validateAbsoluteDirectory(value.parent), name: value.name };
 }
 
 function readDirectoryRequest(value: unknown): string {

@@ -36,7 +36,7 @@ export interface EnvironmentVariableDefinition {
   required: boolean;
   secret: boolean;
   exampleValue?: string;
-  sourceComponent: StackComponentId;
+  sourceComponent: StackComponentId | `plugin:${string}`;
 }
 
 export interface StackRequirement {
@@ -70,6 +70,8 @@ export interface StackDefinition {
   addDocker: boolean;
   addGitHubActions: boolean;
   templateId?: string;
+  /** IDs supplied by validated installed declarative plugins. */
+  pluginComponents?: readonly string[];
 }
 
 export interface StackIssue {
@@ -319,6 +321,32 @@ export function validateStack(definition: StackDefinition): StackValidationResul
   const errors: StackIssue[] = [];
   const warnings: StackIssue[] = [];
   const conflicts: StackConflict[] = [];
+  const pluginComponents = definition.pluginComponents ?? [];
+  if (
+    pluginComponents.some(
+      (id) =>
+        !/^[a-z0-9][a-z0-9._-]{0,127}$/u.test(id) || id.includes('..') || isStackComponentId(id),
+    )
+  ) {
+    errors.push(
+      issue(
+        'unknown-plugin-component',
+        [],
+        'The stack contains an invalid or reserved plugin component id.',
+        'Choose a component supplied by a validated installed plugin.',
+      ),
+    );
+  }
+  if (new Set(pluginComponents).size !== pluginComponents.length) {
+    errors.push(
+      issue(
+        'duplicate-plugin-component',
+        [],
+        'The stack contains a duplicate plugin component.',
+        'Keep each plugin component only once.',
+      ),
+    );
+  }
   const selected = new Set<StackComponentId>([definition.framework, ...definition.components]);
   if (definition.initializeGit) selected.add('git');
   if (definition.addDocker) selected.add('docker');

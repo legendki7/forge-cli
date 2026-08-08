@@ -5,6 +5,7 @@ import process from 'node:process';
 
 export const publishablePackages = [
   'packages/core',
+  'packages/plugin-sdk',
   'packages/plugins/plugin-docker',
   'packages/plugins/plugin-github-actions',
   'packages/templates',
