@@ -14,6 +14,12 @@ import type { ProjectGenerationPlan } from '@forgecli7/templates';
 import type { BuiltinPluginCatalogEntry } from '@forgecli7/plugins';
 import type { PluginCatalogEntry } from '@forgecli7/plugins';
 import type { ForgeKiPluginManifest, PluginSafetyReport } from '@forgecli7/plugin-sdk';
+import type {
+  ForgeWorkspace,
+  WorkspaceGenerationPlan,
+  WorkspaceGenerationResult,
+  WorkspaceScanResult,
+} from '@forgecli7/workspaces';
 
 export const tauriBridge: DesktopBridge = {
   selectDestination() {
@@ -105,5 +111,21 @@ export const tauriBridge: DesktopBridge = {
 
   copyProjectPath(path) {
     return invoke('copy_project_path', { path });
+  },
+
+  planWorkspace(definition: ForgeWorkspace, destinationDirectory: string) {
+    return invoke<WorkspaceGenerationPlan>('plan_workspace', { definition, destinationDirectory });
+  },
+
+  createWorkspace(plan: WorkspaceGenerationPlan) {
+    return invoke<WorkspaceGenerationResult>('create_workspace', { plan });
+  },
+
+  scanWorkspace(path: string) {
+    return invoke<WorkspaceScanResult>('scan_workspace', { path });
+  },
+
+  copyText(text: string) {
+    return invoke('copy_text', { text });
   },
 };

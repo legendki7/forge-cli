@@ -1,5 +1,7 @@
 # ForgeKi Desktop
 
+Workspace Builder is a lazy-loaded visual canvas for services and typed connections. It supports built-in/custom presets, deterministic validation, destination selection, exact file-owner review, confirmed atomic generation, config/ASCII copy, and read-only import. Workspace state is local and bounded; recent workspaces are not rescanned on startup.
+
 ForgeKi Desktop is a local developer studio for creating, inspecting, and configuring ForgeKi
 projects. Phase 1 supports five built-in Next.js templates with TypeScript and the App Router. It
 does not install dependencies, access the network, run `create-next-app`, deploy applications, or

@@ -26,6 +26,9 @@ export default defineConfig({
       '@forgecli7/templates': fileURLToPath(
         new URL('./packages/templates/src/index.ts', import.meta.url),
       ),
+      '@forgecli7/workspaces': fileURLToPath(
+        new URL('./packages/workspaces/src/index.ts', import.meta.url),
+      ),
     },
   },
   test: {

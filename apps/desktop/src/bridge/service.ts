@@ -29,6 +29,13 @@ import {
   type ProjectGenerationPlan,
 } from '@forgecli7/templates';
 import { checkDeveloperTools } from './developer-tools.js';
+import {
+  createWorkspaceGenerationPlan,
+  executeWorkspaceGenerationPlan,
+  parseWorkspaceDefinition,
+  scanWorkspace,
+  type WorkspaceGenerationPlan,
+} from '@forgecli7/workspaces';
 import type {
   DesktopCreateRequest,
   DesktopCreateResult,
@@ -52,7 +59,10 @@ export interface WorkerEnvelope {
     | 'plugin-install'
     | 'plugin-install-bundled'
     | 'plugin-remove'
-    | 'plugin-create';
+    | 'plugin-create'
+    | 'plan-workspace'
+    | 'create-workspace'
+    | 'scan-workspace';
   request: unknown;
 }
 
@@ -308,6 +318,21 @@ async function handleOperation(
         ...input,
         declarativePlugins: await declarativeSources(input.stack),
       });
+    } else if (operation === 'plan-workspace') {
+      const input = readWorkspaceRequest(request, false);
+      result = await createWorkspaceGenerationPlan(input.definition, {
+        destinationDirectory: input.destinationDirectory,
+      });
+    } else if (operation === 'create-workspace') {
+      const input = readWorkspaceRequest(request, true);
+      const trustedPlan = await createWorkspaceGenerationPlan(input.definition, {
+        destinationDirectory: input.destinationDirectory,
+      });
+      if (JSON.stringify(trustedPlan) !== JSON.stringify(input.reviewedPlan))
+        throw new Error('The reviewed workspace plan no longer matches the trusted plan.');
+      result = await executeWorkspaceGenerationPlan(trustedPlan);
+    } else if (operation === 'scan-workspace') {
+      result = await scanWorkspace(readDirectoryRequest(request));
     } else if (operation === 'scan') {
       result = await scanProjectDirectory(readDirectoryRequest(request));
     } else if (operation === 'inspect-plugins') {
@@ -352,6 +377,32 @@ async function handleOperation(
   } catch (error) {
     send({ type: 'error', payload: publicError(error) });
   }
+}
+
+function readWorkspaceRequest(
+  value: unknown,
+  requiresPlan: boolean,
+): {
+  definition: ReturnType<typeof parseWorkspaceDefinition>;
+  destinationDirectory: string;
+  reviewedPlan?: WorkspaceGenerationPlan;
+} {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some(
+      (key) => key !== 'definition' && key !== 'destinationDirectory' && key !== 'reviewedPlan',
+    ) ||
+    (requiresPlan && !isRecord(value.reviewedPlan)) ||
+    (!requiresPlan && value.reviewedPlan !== undefined)
+  )
+    invalidPayload();
+  return {
+    definition: parseWorkspaceDefinition(value.definition),
+    destinationDirectory: validateAbsoluteDirectory(value.destinationDirectory),
+    ...(requiresPlan
+      ? { reviewedPlan: value.reviewedPlan as unknown as WorkspaceGenerationPlan }
+      : {}),
+  };
 }
 
 function readStackPlanRequest(value: unknown): {

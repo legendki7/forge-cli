@@ -5,6 +5,7 @@ import { registerCheckCommand } from './commands/check.js';
 import { registerCreateCommand, type CreateCommandDependencies } from './commands/create.js';
 import { registerStacksCommand } from './commands/stacks.js';
 import { registerPluginCommands } from './commands/plugins.js';
+import { registerWorkspaceCommands } from './commands/workspaces.js';
 import { createDefaultContext, type CommandContext } from './context.js';
 import { readCliPackageMetadata } from './package-metadata.js';
 
@@ -32,6 +33,7 @@ export function createProgram(
   registerCheckCommand(program, context);
   registerStacksCommand(program, context);
   registerPluginCommands(program, context);
+  registerWorkspaceCommands(program, context);
 
   return program;
 }

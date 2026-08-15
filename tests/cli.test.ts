@@ -73,6 +73,8 @@ describe('ForgeKi program', () => {
       'stacks',
       'plugins',
       'plugin',
+      'workspaces',
+      'workspace',
     ]);
   });
 
@@ -512,5 +514,61 @@ describe('ForgeKi program', () => {
     await expect(
       readFile(path.join(cwd, 'my-plugin', 'templates', 'example.txt'), 'utf8'),
     ).resolves.toContain('{{project.name}}');
+  });
+
+  it('lists presets and creates a workspace from explicit services', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'forge-workspace-cli-'));
+    temporaryDirectories.push(cwd);
+    const output: string[] = [];
+    const program = createProgram({ cwd, write: (message) => output.push(message) });
+    await program.parseAsync(['workspaces', 'presets'], { from: 'user' });
+    expect(output.join('\n')).toContain('saas-foundation');
+    await program.parseAsync(
+      [
+        'workspace',
+        'create',
+        'my-platform',
+        '--frontend',
+        'react-vite',
+        '--api',
+        'express',
+        '--database',
+        'postgres',
+        '--cache',
+        'redis',
+        '--shared-types',
+        '--docker',
+        '--github-actions',
+        '--no-git',
+      ],
+      { from: 'user' },
+    );
+    await expect(
+      readFile(path.join(cwd, 'my-platform', 'docker-compose.yml'), 'utf8'),
+    ).resolves.toContain('redis:7-alpine');
+    await expect(
+      readFile(path.join(cwd, 'my-platform', 'forgeki.workspace.json'), 'utf8'),
+    ).resolves.toContain('SHARED_PACKAGE');
+  });
+
+  it('validates configs and safely refuses a second workspace creation', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'forge-workspace-repeat-'));
+    temporaryDirectories.push(cwd);
+    let exitCode = 0;
+    const output: string[] = [];
+    const program = createProgram({
+      cwd,
+      write: (message) => output.push(message),
+      setExitCode: (code) => (exitCode = code),
+    });
+    await program.parseAsync(['workspace', 'create', 'repeatable', '--no-git'], { from: 'user' });
+    await program.parseAsync(
+      ['workspace', 'validate', path.join(cwd, 'repeatable', 'forgeki.workspace.json')],
+      { from: 'user' },
+    );
+    expect(output.join('\n')).toContain('configuration is valid');
+    await program.parseAsync(['workspace', 'create', 'repeatable', '--no-git'], { from: 'user' });
+    expect(exitCode).toBe(1);
+    expect(output.at(-1)).toContain('already exists');
   });
 });

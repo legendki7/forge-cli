@@ -16,6 +16,7 @@ import type {
   DeveloperToolsReport,
   NavigationPage,
   RecentProject,
+  RecentWorkspace,
 } from './types';
 
 export function PageHeading({
@@ -43,18 +44,24 @@ export function PageHeading({
 
 export function HomePage({
   recentProjects,
+  recentWorkspaces = [],
   activity,
   navigate,
   openProject,
   scanProject,
   removeProject,
+  openWorkspace,
+  removeWorkspace,
 }: {
   recentProjects: RecentProject[];
+  recentWorkspaces?: RecentWorkspace[];
   activity: ActivityEntry[];
   navigate: (page: NavigationPage) => void;
   openProject: (path: string) => void;
   scanProject: (path: string) => void;
   removeProject: (path: string) => void;
+  openWorkspace?: (path: string) => void;
+  removeWorkspace?: (path: string) => void;
 }) {
   return (
     <section className="page">
@@ -64,6 +71,11 @@ export function HomePage({
         description="Build and configure development projects visually."
       />
       <div className="quick-grid">
+        <Quick
+          title="Build a workspace"
+          text="Plan a typed multi-service monorepo."
+          onClick={() => navigate('workspace-builder')}
+        />
         <Quick
           title="Create a project"
           text="Start a guided local project."
@@ -85,6 +97,45 @@ export function HomePage({
           onClick={() => navigate('tools')}
         />
       </div>
+      <section className="panel">
+        <div className="section-title">
+          <div>
+            <h2>Recent workspaces</h2>
+            <p>Created or imported on this device; never rescanned automatically.</p>
+          </div>
+        </div>
+        {recentWorkspaces.length === 0 ? (
+          <Empty title="No recent workspaces" text="Build or import a workspace to see it here." />
+        ) : (
+          <div className="list-stack">
+            {recentWorkspaces.map((workspace) => (
+              <article className="list-card" key={workspace.path}>
+                <div>
+                  <strong>{workspace.name}</strong>
+                  <p className="truncate">{workspace.path}</p>
+                  <small>
+                    {workspace.serviceCount} services ·{' '}
+                    {workspace.frameworks.join(', ') || 'no app framework'}
+                    {workspace.database ? ` · ${workspace.database}` : ''}
+                    {workspace.infrastructure.length
+                      ? ` · ${workspace.infrastructure.join(', ')}`
+                      : ''}
+                  </small>
+                </div>
+                <div className="compact-actions">
+                  <button onClick={() => openWorkspace?.(workspace.path)}>Open</button>
+                  <button
+                    aria-label={`Remove ${workspace.name} from recent workspaces`}
+                    onClick={() => removeWorkspace?.(workspace.path)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
       <div className="dashboard-columns">
         <section className="panel">
           <div className="section-title">
@@ -1067,6 +1118,9 @@ function activityLabel(type: ActivityType) {
       'plugin-integrity-failure': 'Plugin disabled after integrity failure',
       'plugin-used': 'Plugin used in generation',
       'plugin-development-created': 'Plugin development project created',
+      'workspace-configured': 'Workspace configured',
+      'workspace-generated': 'Workspace generated',
+      'workspace-scanned': 'Workspace scanned',
     } as const
   )[type];
 }

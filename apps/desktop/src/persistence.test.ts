@@ -94,7 +94,7 @@ describe('desktop persistence', () => {
       ],
       lastStack: definition,
     });
-    expect(migrated.schemaVersion).toBe(2);
+    expect(migrated.schemaVersion).toBe(3);
     expect(migrated.customStackPresets[0]?.name).toBe('Local API');
     expect(migrated.lastStack?.framework).toBe('express');
   });

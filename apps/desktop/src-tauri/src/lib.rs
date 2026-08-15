@@ -172,6 +172,99 @@ async fn plan_stack(
 }
 
 #[tauri::command]
+async fn plan_workspace(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    definition: Value,
+    destination_directory: String,
+) -> Result<Value, String> {
+    validate_workspace_definition(&definition)?;
+    let parent = canonical_directory(&destination_directory)?;
+    ensure_allowed(&state, &parent)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "plan-workspace",
+        serde_json::json!({ "definition": definition, "destinationDirectory": parent }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn create_workspace(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    plan: Value,
+) -> Result<Value, String> {
+    let object = plan
+        .as_object()
+        .ok_or_else(|| "The workspace plan is invalid.".to_string())?;
+    let definition = object
+        .get("workspace")
+        .cloned()
+        .ok_or_else(|| "The workspace plan is invalid.".to_string())?;
+    validate_workspace_definition(&definition)?;
+    let workspace_name = definition
+        .get("name")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "The workspace name is invalid.".to_string())?
+        .to_string();
+    let destination = object
+        .get("destinationDirectory")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "The workspace destination is invalid.".to_string())?;
+    let parent = canonical_directory(destination)?;
+    ensure_allowed(&state, &parent)?;
+    let result = run_typed_operation(
+        &app,
+        &state,
+        "create-workspace",
+        serde_json::json!({ "definition": definition, "destinationDirectory": parent, "reviewedPlan": plan }),
+    )
+    .await?;
+    let created = result
+        .get("workspaceDirectory")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "The worker returned an invalid workspace result.".to_string())?;
+    let created_directory = canonical_directory(created)?;
+    let expected = parent
+        .join(workspace_name)
+        .canonicalize()
+        .map_err(|_| "The generated workspace could not be verified.".to_string())?;
+    if created_directory != expected {
+        return Err("The workspace worker returned an unexpected destination.".into());
+    }
+    remember_allowed(&state, created_directory)?;
+    Ok(result)
+}
+
+#[tauri::command]
+async fn scan_workspace(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    path: String,
+) -> Result<Value, String> {
+    let directory = verified_project(&state, &path)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "scan-workspace",
+        serde_json::json!({ "projectDirectory": directory }),
+    )
+    .await
+}
+
+#[tauri::command]
+fn copy_text(app: AppHandle, text: String) -> Result<(), String> {
+    if text.len() > MAX_STATE_SIZE || text.chars().any(|character| character == '\0') {
+        return Err("The text is too large or invalid.".into());
+    }
+    app.clipboard()
+        .write_text(text)
+        .map_err(|_| "The text could not be copied.".to_string())
+}
+
+#[tauri::command]
 async fn scan_project(
     app: AppHandle,
     state: State<'_, DesktopState>,
@@ -638,6 +731,41 @@ fn validate_stack_value(stack: &Value, framework: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn validate_workspace_definition(value: &Value) -> Result<(), String> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| "The workspace definition is invalid.".to_string())?;
+    if object.keys().any(|key| {
+        !matches!(
+            key.as_str(),
+            "schemaVersion"
+                | "id"
+                | "name"
+                | "packageManager"
+                | "services"
+                | "connections"
+                | "tooling"
+        )
+    }) || object.get("schemaVersion").and_then(Value::as_u64) != Some(1)
+        || object
+            .get("services")
+            .and_then(Value::as_array)
+            .is_none_or(|services| services.len() > 20)
+        || object
+            .get("connections")
+            .and_then(Value::as_array)
+            .is_none_or(|connections| connections.len() > 40)
+    {
+        return Err("The workspace definition is invalid or exceeds its limits.".into());
+    }
+    let encoded = serde_json::to_vec(value)
+        .map_err(|_| "The workspace definition is invalid.".to_string())?;
+    if encoded.len() > MAX_STATE_SIZE {
+        return Err("The workspace definition is too large.".into());
+    }
+    Ok(())
+}
+
 fn verify_worker_destination(
     parent: &Path,
     request: &CreateRequest,
@@ -727,8 +855,11 @@ fn validate_persisted_state(state: &Value) -> Result<(), String> {
                 | "activity"
                 | "customStackPresets"
                 | "lastStack"
+                | "recentWorkspaces"
+                | "customWorkspacePresets"
+                | "lastWorkspace"
         )
-    }) || object.get("schemaVersion").and_then(Value::as_u64) != Some(2)
+    }) || object.get("schemaVersion").and_then(Value::as_u64) != Some(3)
     {
         return Err("ForgeKi preferences use an unsupported schema.".into());
     }
@@ -859,7 +990,7 @@ mod tests {
     #[test]
     fn persistence_rejects_sensitive_keys() {
         let value = serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "preferences": { "token": "not-allowed" },
             "recentProjects": [],
             "activity": []
@@ -906,7 +1037,11 @@ pub fn run() {
             load_desktop_state,
             save_desktop_state,
             open_project_folder,
-            copy_project_path
+            copy_project_path,
+            plan_workspace,
+            create_workspace,
+            scan_workspace,
+            copy_text
         ])
         .run(tauri::generate_context!())
         .expect("error while running ForgeKi Desktop");

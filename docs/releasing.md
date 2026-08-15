@@ -1,5 +1,7 @@
 # Releasing ForgeKi
 
+Workspace releases verify public package imports, CLI creation/check smokes, Desktop worker/native tests, atomic output, packed manifests, and artifact hygiene. Generated workspaces, installers, native binaries, dependency directories, and build output are never committed.
+
 ForgeKi is preparing a coordinated scoped-package beta. No release command in the normal quality
 workflow publishes automatically. The first public release must use the npm distribution tag
 `beta`, never `latest`.

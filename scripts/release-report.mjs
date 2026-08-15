@@ -74,19 +74,20 @@ one coherent minor prerelease. Internal dependency bumps are coordinated across 
 - Package scope and metadata consistency
 - Formatting and ESLint
 - CLI, package, release-utility, desktop UI, and desktop bridge Vitest suites
-- All six public package builds and export-map resolution
+- All eight public package builds and export-map resolution
 - Non-mutating Changesets prerelease planning in a temporary copy
 - Actual tarball allowlist, shebang, bin, and workspace-version inspection
 - Isolated local installation of all packed packages
-- Public ESM imports from core, templates, Docker, and GitHub Actions packages
+- Public ESM imports from core, plugin SDK, templates, workspaces, Docker, and GitHub Actions packages
 - Packed CLI version aliases and command help
 - pnpm, npm, Yarn, and Bun project generation and detection
 - Docker and GitHub Actions repeated byte-for-byte idempotency
+- Packed multi-service workspace generation, validation, and read-only scanning
 - Temporary-directory cleanup on success and failure
 
 ## Packed package and CLI results
 
-All six packages contain package metadata, compiled ESM JavaScript, declarations, README, and MIT
+All eight packages contain package metadata, compiled ESM JavaScript, declarations, README, and MIT
 license files. No source tests, coverage, Changesets, caches, or unresolved \`workspace:*\` references
 were found. The CLI maps \`forge\` to a shebang-enabled entry point and runs outside the monorepo.
 
@@ -104,7 +105,7 @@ ${technical}
 
 ## Known limitations
 
-- Only Next.js project creation is implemented.
+- Project and workspace catalogs are deliberately limited to documented built-in services.
 - Framework detection targets documented Node.js project shapes.
 - CI currently exercises Ubuntu only; Windows and macOS are not claimed as CI-tested platforms.
 - npm package-name availability and scope ownership require a manual registry check.
@@ -113,7 +114,7 @@ ${technical}
 ## Exact manual release sequence
 
 1. Commit the reviewed candidate and start from a clean checkout.
-2. Confirm ownership and availability of all six \`@forgecli7/*\` package names.
+2. Confirm ownership and availability of all eight \`@forgecli7/*\` package names.
 3. Configure npm Trusted Publishing, or a protected \`NPM_TOKEN\` secret in the \`npm-beta\` environment.
 4. Run \`pnpm release:verify\` and require a ready status.
 5. Run \`pnpm changeset pre enter beta\`, commit the prerelease state, and review the Changesets version PR.
@@ -123,7 +124,7 @@ ${technical}
 
 ## Partial-publication recovery
 
-npm cannot atomically publish six packages. If publication stops partway through, do not unpublish
+npm cannot atomically publish eight packages. If publication stops partway through, do not unpublish
 successful packages or reuse their versions. Record which package versions exist, correct the failure,
 create follow-up patch Changesets for unpublished dependents when necessary, rerun the complete release
 verification, and publish the remaining coordinated versions with the \`beta\` tag. Document the

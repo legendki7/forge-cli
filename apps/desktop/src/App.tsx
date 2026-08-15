@@ -29,12 +29,16 @@ import type {
 const StackBuilderPage = lazy(() =>
   import('./StackBuilder').then((module) => ({ default: module.StackBuilderPage })),
 );
+const WorkspaceBuilderPage = lazy(() =>
+  import('./WorkspaceBuilder').then((module) => ({ default: module.WorkspaceBuilderPage })),
+);
 
 const navigation: readonly { id: NavigationPage; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: 'H' },
   { id: 'create', label: 'Create Project', icon: '+' },
   { id: 'templates', label: 'Templates', icon: 'T' },
   { id: 'stack-builder', label: 'Stack Builder', icon: 'B' },
+  { id: 'workspace-builder', label: 'Workspace Builder', icon: 'W' },
   { id: 'scan', label: 'Scan Project', icon: 'S' },
   { id: 'plugins', label: 'Marketplace', icon: 'P' },
   { id: 'tools', label: 'Developer Tools', icon: 'D' },
@@ -177,6 +181,7 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
         return (
           <HomePage
             recentProjects={state.recentProjects}
+            recentWorkspaces={state.recentWorkspaces}
             activity={recentActivity}
             navigate={navigate}
             openProject={(path) => {
@@ -196,6 +201,15 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
               updateState((current) => ({
                 ...current,
                 recentProjects: current.recentProjects.filter((project) => project.path !== path),
+              }))
+            }
+            openWorkspace={(path) => void bridge.openProjectFolder(path)}
+            removeWorkspace={(path) =>
+              updateState((current) => ({
+                ...current,
+                recentWorkspaces: current.recentWorkspaces.filter(
+                  (workspace) => workspace.path !== path,
+                ),
               }))
             }
           />
@@ -233,6 +247,86 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
                 (plugin) =>
                   plugin.installed && plugin.integrity === 'valid' && Boolean(plugin.manifest),
               )}
+            />
+          </Suspense>
+        );
+      case 'workspace-builder':
+        return (
+          <Suspense fallback={<p className="loading-state">Loading Workspace Builder…</p>}>
+            <WorkspaceBuilderPage
+              bridge={bridge}
+              initialWorkspace={state.lastWorkspace}
+              customPresets={state.customWorkspacePresets}
+              onWorkspaceChange={(lastWorkspace) =>
+                updateState((current) => ({ ...current, lastWorkspace }))
+              }
+              onPresetsChange={(customWorkspacePresets) =>
+                updateState((current) => ({ ...current, customWorkspacePresets }))
+              }
+              onCreated={(path, workspace) => {
+                const now = new Date().toISOString();
+                updateState((current) => ({
+                  ...addActivity(current, {
+                    id: `${Date.now()}-workspace-created`,
+                    type: 'workspace-generated',
+                    projectName: workspace.name,
+                    projectPath: path,
+                    timestamp: now,
+                    result: 'success',
+                    message: 'Workspace generated successfully.',
+                  }),
+                  recentWorkspaces: [
+                    {
+                      name: workspace.name,
+                      path,
+                      serviceCount: workspace.services.length,
+                      lastActivityAt: now,
+                      activityType: 'created' as const,
+                      frameworks: workspace.services
+                        .filter((service) => service.type === 'web' || service.type === 'api')
+                        .map((service) => service.implementation),
+                      database: workspace.services.find((service) => service.type === 'database')
+                        ?.implementation,
+                      infrastructure: workspace.services
+                        .filter((service) => service.type === 'infrastructure')
+                        .map((service) => service.implementation),
+                    },
+                    ...current.recentWorkspaces.filter((item) => item.path !== path),
+                  ].slice(0, 25),
+                }));
+              }}
+              onScanned={(path, workspace) => {
+                const now = new Date().toISOString();
+                updateState((current) => ({
+                  ...addActivity(current, {
+                    id: `${Date.now()}-workspace-scanned`,
+                    type: 'workspace-scanned',
+                    projectName: workspace.name,
+                    projectPath: path,
+                    timestamp: now,
+                    result: 'success',
+                    message: 'Workspace imported read-only.',
+                  }),
+                  recentWorkspaces: [
+                    {
+                      name: workspace.name,
+                      path,
+                      serviceCount: workspace.services.length,
+                      lastActivityAt: now,
+                      activityType: 'scanned' as const,
+                      frameworks: workspace.services
+                        .filter((service) => service.type === 'web' || service.type === 'api')
+                        .map((service) => service.implementation),
+                      database: workspace.services.find((service) => service.type === 'database')
+                        ?.implementation,
+                      infrastructure: workspace.services
+                        .filter((service) => service.type === 'infrastructure')
+                        .map((service) => service.implementation),
+                    },
+                    ...current.recentWorkspaces.filter((item) => item.path !== path),
+                  ].slice(0, 25),
+                }));
+              }}
             />
           </Suspense>
         );

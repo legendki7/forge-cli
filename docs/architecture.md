@@ -1,5 +1,7 @@
 # Architecture
 
+Phase 4 adds `@forgecli7/workspaces` as a public shared domain package. CLI and Desktop depend on its closed model, deterministic validator/planner, atomic generator, and read-only scanner. Desktop never writes workspace files directly: its worker reparses and recomputes the reviewed plan behind a native selected-directory boundary.
+
 ForgeKi is organized as a pnpm monorepo. Each package owns one concern and publishes a deliberately
 small public API.
 

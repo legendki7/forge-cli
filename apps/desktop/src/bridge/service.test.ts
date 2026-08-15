@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { detectProject } from '@forgecli7/core';
+import { getWorkspacePreset, type WorkspaceGenerationPlan } from '@forgecli7/workspaces';
 import {
   handleWorkerEnvelope,
   scanProjectDirectory,
@@ -234,6 +235,71 @@ describe('desktop worker security boundary', () => {
       details: expect.stringMatching(
         /(?:not provided by an installed, valid plugin|Unknown or disabled plugin components)/u,
       ),
+    });
+  });
+
+  it('recomputes reviewed workspace plans, blocks forgery, creates, and scans read-only', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'forgeki-workspace-worker-'));
+    temporaryDirectories.push(root);
+    const definition = {
+      ...getWorkspacePreset('saas-foundation')!.definition,
+      id: 'worker-platform',
+      name: 'worker-platform',
+      tooling: { initializeGit: false, docker: true, githubActions: true },
+    };
+    const planned: WorkerMessage[] = [];
+    await handleWorkerEnvelope(
+      {
+        operationId: 'plan-workspace',
+        operation: 'plan-workspace',
+        request: { definition, destinationDirectory: root },
+      },
+      (message) => planned.push(message),
+    );
+    const plan =
+      planned.at(-1)?.type === 'operation-result'
+        ? (planned.at(-1)!.payload as WorkspaceGenerationPlan)
+        : undefined;
+    expect(plan?.files.map(({ path: filePath }) => filePath)).toContain('docker-compose.yml');
+
+    const forged = structuredClone(plan!);
+    forged.files.push({ path: 'evil.js', content: 'process.exit()', owner: 'workspace' });
+    const blocked: WorkerMessage[] = [];
+    await handleWorkerEnvelope(
+      {
+        operationId: 'forged-workspace',
+        operation: 'create-workspace',
+        request: { definition, destinationDirectory: root, reviewedPlan: forged },
+      },
+      (message) => blocked.push(message),
+    );
+    expect(blocked.at(-1)?.type).toBe('error');
+
+    const created: WorkerMessage[] = [];
+    await handleWorkerEnvelope(
+      {
+        operationId: 'create-workspace',
+        operation: 'create-workspace',
+        request: { definition, destinationDirectory: root, reviewedPlan: plan },
+      },
+      (message) => created.push(message),
+    );
+    expect(created.at(-1)).toMatchObject({
+      type: 'operation-result',
+      payload: { serviceCount: 5 },
+    });
+    const scanned: WorkerMessage[] = [];
+    await handleWorkerEnvelope(
+      {
+        operationId: 'scan-workspace',
+        operation: 'scan-workspace',
+        request: { projectDirectory: path.join(root, 'worker-platform') },
+      },
+      (message) => scanned.push(message),
+    );
+    expect(scanned.at(-1)).toMatchObject({
+      type: 'operation-result',
+      payload: { source: 'forgeki-config', definition: { name: 'worker-platform' } },
     });
   });
 });

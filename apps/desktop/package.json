@@ -29,6 +29,7 @@
     "@forgecli7/plugin-github-actions": "workspace:*",
     "@forgecli7/plugins": "workspace:*",
     "@forgecli7/templates": "workspace:*",
+    "@forgecli7/workspaces": "workspace:*",
     "@tauri-apps/api": "^2.8.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

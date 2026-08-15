@@ -59,6 +59,8 @@ export async function validatePackedInstallation(root, archives, dependencies = 
         ['check', '--help'],
         ['plugins', '--help'],
         ['plugin', '--help'],
+        ['workspaces', '--help'],
+        ['workspace', '--help'],
       ]) {
         const output = invoke(args);
         if (!output.includes('Usage:')) throw new Error(`Packed forge ${args.join(' ')} failed.`);
@@ -98,7 +100,32 @@ export async function validatePackedInstallation(root, archives, dependencies = 
         }
       }
 
-      return { cliVersion: cliMetadata.version, projects: 4, plugins: 2 };
+      invoke(['workspace', 'create', 'packed-platform', '--preset', 'saas-foundation', '--no-git']);
+      const workspaceDirectory = path.join(workspace, 'packed-platform');
+      for (const required of [
+        'forgeki.workspace.json',
+        'docker-compose.yml',
+        'apps/web/package.json',
+        'apps/api/package.json',
+        'packages/shared/package.json',
+      ]) {
+        if (!existsSync(path.join(workspaceDirectory, required)))
+          throw new Error(`Packed workspace generation missed ${required}.`);
+      }
+      if (!invoke(['workspace', 'check', workspaceDirectory]).includes('Services: 5'))
+        throw new Error('Packed workspace check failed.');
+      if (
+        !invoke([
+          'workspace',
+          'validate',
+          path.join(workspaceDirectory, 'forgeki.workspace.json'),
+        ]).includes('configuration is valid')
+      )
+        throw new Error('Packed workspace validation failed.');
+      if (existsSync(path.join(workspaceDirectory, 'node_modules')))
+        throw new Error('Packed workspace unexpectedly installed dependencies.');
+
+      return { cliVersion: cliMetadata.version, projects: 4, workspaces: 1, plugins: 2 };
     },
     dependencies.temporaryDirectory,
   );
@@ -125,11 +152,13 @@ async function validatePublicImports(installationDirectory, runner) {
       "import { validateProjectName } from '@forgecli7/core';",
       "import { validatePluginManifest } from '@forgecli7/plugin-sdk';",
       "import { renderNextjsTemplate } from '@forgecli7/templates';",
+      "import { getWorkspacePreset, validateWorkspace } from '@forgecli7/workspaces';",
       "import { dockerPlugin } from '@forgecli7/plugin-docker';",
       "import { githubActionsPlugin } from '@forgecli7/plugin-github-actions';",
       "if (!validateProjectName('consumer-app').valid) throw new Error('core export failed');",
       "if (validatePluginManifest({}).valid) throw new Error('plugin SDK export failed');",
       "if (renderNextjsTemplate('consumer-app', 'pnpm').length === 0) throw new Error('templates export failed');",
+      "if (!validateWorkspace(getWorkspacePreset('saas-foundation').definition).valid) throw new Error('workspaces export failed');",
       "if (dockerPlugin.id !== 'docker') throw new Error('Docker export failed');",
       "if (githubActionsPlugin.id !== 'github-actions') throw new Error('GitHub Actions export failed');",
     ].join('\n'),

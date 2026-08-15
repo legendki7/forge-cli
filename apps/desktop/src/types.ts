@@ -13,6 +13,12 @@ import type {
 } from '@forgecli7/plugins';
 import type { ForgeKiPluginManifest, PluginSafetyReport } from '@forgecli7/plugin-sdk';
 import type { ProjectGenerationPlan, TemplateId } from '@forgecli7/templates';
+import type { CustomWorkspacePreset, ForgeWorkspace } from '@forgecli7/workspaces/model';
+import type {
+  WorkspaceGenerationPlan,
+  WorkspaceGenerationResult,
+} from '@forgecli7/workspaces/generation';
+import type { WorkspaceScanResult } from '@forgecli7/workspaces/scanner';
 
 export type PackageManager = SupportedPackageManager;
 export type NavigationPage =
@@ -20,6 +26,7 @@ export type NavigationPage =
   | 'create'
   | 'templates'
   | 'stack-builder'
+  | 'workspace-builder'
   | 'scan'
   | 'plugins'
   | 'tools'
@@ -66,7 +73,10 @@ export type ActivityType =
   | 'plugin-removed'
   | 'plugin-integrity-failure'
   | 'plugin-used'
-  | 'plugin-development-created';
+  | 'plugin-development-created'
+  | 'workspace-configured'
+  | 'workspace-generated'
+  | 'workspace-scanned';
 export type ActivityResult = 'success' | 'warning' | 'failed';
 
 export interface ActivityEntry {
@@ -89,12 +99,26 @@ export interface RecentProject {
 }
 
 export interface PersistedDesktopState {
-  schemaVersion: 2;
+  schemaVersion: 3;
   preferences: DesktopPreferences;
   recentProjects: RecentProject[];
   activity: ActivityEntry[];
   customStackPresets: CustomStackPreset[];
   lastStack?: StackDefinition;
+  recentWorkspaces: RecentWorkspace[];
+  customWorkspacePresets: CustomWorkspacePreset[];
+  lastWorkspace?: ForgeWorkspace;
+}
+
+export interface RecentWorkspace {
+  name: string;
+  path: string;
+  serviceCount: number;
+  lastActivityAt: string;
+  activityType: 'created' | 'scanned';
+  frameworks: string[];
+  database?: string;
+  infrastructure: string[];
 }
 
 export interface CustomStackPreset {
@@ -228,6 +252,13 @@ export interface DesktopBridge {
   saveDesktopState(state: PersistedDesktopState): Promise<void>;
   openProjectFolder(path: string): Promise<void>;
   copyProjectPath(path: string): Promise<void>;
+  planWorkspace?(
+    definition: ForgeWorkspace,
+    destinationDirectory: string,
+  ): Promise<WorkspaceGenerationPlan>;
+  createWorkspace?(plan: WorkspaceGenerationPlan): Promise<WorkspaceGenerationResult>;
+  scanWorkspace?(path: string): Promise<WorkspaceScanResult>;
+  copyText?(text: string): Promise<void>;
 }
 
 export interface StackPlanRequest {

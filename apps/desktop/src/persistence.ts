@@ -4,7 +4,9 @@ import type {
   PersistedDesktopState,
   RecentProject,
   CustomStackPreset,
+  RecentWorkspace,
 } from './types';
+import { parseWorkspaceDefinition, type CustomWorkspacePreset } from '@forgecli7/workspaces/model';
 import {
   isStackComponentId,
   isStackFramework,
@@ -15,6 +17,7 @@ import {
 export const MAX_RECENT_PROJECTS = 25;
 export const MAX_ACTIVITY_ENTRIES = 200;
 export const MAX_CUSTOM_STACK_PRESETS = 50;
+export const MAX_RECENT_WORKSPACES = 25;
 
 export const defaultPreferences: DesktopPreferences = {
   theme: 'system',
@@ -37,11 +40,13 @@ export const defaultPreferences: DesktopPreferences = {
 
 export function createDefaultDesktopState(): PersistedDesktopState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     preferences: { ...defaultPreferences },
     recentProjects: [],
     activity: [],
     customStackPresets: [],
+    recentWorkspaces: [],
+    customWorkspacePresets: [],
   };
 }
 
@@ -52,8 +57,12 @@ export function migrateDesktopState(value: unknown): PersistedDesktopState {
   const activity = Array.isArray(value.activity) ? value.activity : [];
   const presets = Array.isArray(value.customStackPresets) ? value.customStackPresets : [];
   const lastStack = readStackDefinition(value.lastStack);
+  const workspacePresets = Array.isArray(value.customWorkspacePresets)
+    ? value.customWorkspacePresets
+    : [];
+  const lastWorkspace = readWorkspaceDefinition(value.lastWorkspace);
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     preferences: {
       theme: oneOf(preferences.theme, ['system', 'light', 'dark'], 'system'),
       sidebarCollapsed: boolean(preferences.sidebarCollapsed, false),
@@ -91,7 +100,68 @@ export function migrateDesktopState(value: unknown): PersistedDesktopState {
       .map(readCustomStackPreset)
       .filter(isPresent)
       .slice(0, MAX_CUSTOM_STACK_PRESETS),
+    recentWorkspaces: (Array.isArray(value.recentWorkspaces) ? value.recentWorkspaces : [])
+      .map(readRecentWorkspace)
+      .filter(isPresent)
+      .slice(0, MAX_RECENT_WORKSPACES),
+    customWorkspacePresets: workspacePresets
+      .map(readCustomWorkspacePreset)
+      .filter(isPresent)
+      .slice(0, 50),
     ...(lastStack ? { lastStack } : {}),
+    ...(lastWorkspace ? { lastWorkspace } : {}),
+  };
+}
+
+function readRecentWorkspace(value: unknown): RecentWorkspace | undefined {
+  if (!isRecord(value)) return undefined;
+  const name = safeText(value.name, 120);
+  const path = safeText(value.path, 500);
+  if (!name || !path || typeof value.serviceCount !== 'number') return undefined;
+  return {
+    name,
+    path,
+    serviceCount: Math.max(0, Math.min(20, Math.trunc(value.serviceCount))),
+    lastActivityAt: safeText(value.lastActivityAt, 60),
+    activityType: oneOf(value.activityType, ['created', 'scanned'], 'scanned'),
+    frameworks: Array.isArray(value.frameworks)
+      ? value.frameworks
+          .map((item) => safeText(item, 40))
+          .filter(Boolean)
+          .slice(0, 20)
+      : [],
+    ...(safeText(value.database, 40) ? { database: safeText(value.database, 40) } : {}),
+    infrastructure: Array.isArray(value.infrastructure)
+      ? value.infrastructure
+          .map((item) => safeText(item, 40))
+          .filter(Boolean)
+          .slice(0, 20)
+      : [],
+  };
+}
+
+function readWorkspaceDefinition(value: unknown) {
+  try {
+    return parseWorkspaceDefinition(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function readCustomWorkspacePreset(value: unknown): CustomWorkspacePreset | undefined {
+  if (!isRecord(value)) return undefined;
+  const definition = readWorkspaceDefinition(value.definition);
+  const id = safeText(value.id, 100);
+  const name = safeText(value.name, 120);
+  if (!definition || !id || !name) return undefined;
+  return {
+    schemaVersion: 1,
+    id,
+    name,
+    description: safeText(value.description, 300),
+    definition,
+    createdAt: safeText(value.createdAt, 60),
+    updatedAt: safeText(value.updatedAt, 60),
   };
 }
 
@@ -190,6 +260,9 @@ function readActivity(value: unknown): ActivityEntry | undefined {
         'plugin-integrity-failure',
         'plugin-used',
         'plugin-development-created',
+        'workspace-configured',
+        'workspace-generated',
+        'workspace-scanned',
       ],
       'plugin-warning',
     ),

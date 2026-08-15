@@ -9,6 +9,7 @@ export const publishablePackages = [
   'packages/plugins/plugin-docker',
   'packages/plugins/plugin-github-actions',
   'packages/templates',
+  'packages/workspaces',
   'packages/plugins',
   'packages/cli',
 ];

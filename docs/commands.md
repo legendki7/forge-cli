@@ -1,5 +1,7 @@
 # CLI commands
 
+Multi-service commands are documented in [Workspace CLI](workspaces/cli.md): `forge workspaces presets`, `forge workspaces show`, and `forge workspace create/check/validate`.
+
 `forge --version` and `forge -V` print the version from the installed CLI package metadata.
 `forge --help` lists only implemented commands and short examples.
 

@@ -43,6 +43,8 @@ and production readiness or cross-platform support is not yet claimed.
 - Deterministic React/Vite and Express generation with optional Tailwind, database, ORM, and tests
 - Declarative Plugin SDK with closed permissions, local integrity checks, and no code execution
 - Offline Marketplace with Built-in, Bundled, and Local providers
+- Visual multi-service Workspace Builder with typed services, connections, and deterministic ports
+- Atomic monorepo generation with optional Docker Compose and workspace-aware CI
 
 ## Requirements
 
@@ -84,6 +86,8 @@ pnpm dev -- stacks list
 pnpm dev -- plugins list
 pnpm dev -- plugins validate ./examples/plugins/editorconfig
 pnpm dev -- create api --framework express --database sqlite --orm drizzle --testing vitest
+pnpm dev -- workspaces presets
+pnpm dev -- workspace create my-platform --preset saas-foundation --no-git
 ```
 
 Run `forge add docker` from a Node.js project to create a starter `Dockerfile` and `.dockerignore`.
@@ -106,6 +110,11 @@ Existing files are always preserved, so the command is safe to run repeatedly.
 | `forge plugins install P`  | Copy a validated local plugin into ForgeKi application data    |
 | `forge plugins remove ID`  | Remove a local plugin registration, preserving project files   |
 | `forge plugin create NAME` | Generate an offline declarative plugin starter                 |
+| `forge workspaces presets` | List trusted multi-service workspace presets                   |
+| `forge workspaces show ID` | Inspect a workspace preset                                     |
+| `forge workspace create`   | Atomically generate a validated local monorepo                 |
+| `forge workspace check P`  | Scan a workspace read-only with explicit evidence              |
+| `forge workspace validate` | Validate a closed workspace JSON configuration                 |
 
 ## Repository layout
 
@@ -118,6 +127,7 @@ forge-cli/
 |   |-- core/                   # Shared contracts and domain types
 |   |-- plugin-sdk/             # Declarative manifest types and validation
 |   |-- templates/              # Template registry boundary
+|   |-- workspaces/             # Shared multi-service model, generator, and scanner
 |   `-- plugins/                # Plugin registry and loading
 |       `-- plugin-docker/      # Built-in Docker plugin
 |       `-- plugin-github-actions/ # Built-in GitHub Actions plugin
@@ -133,6 +143,9 @@ validated local store, bundled examples, and bounded scanner rules.
 
 The [Visual Stack Builder guide](docs/stack-builder.md) documents the supported components,
 compatibility rules, presets, shared generation plan, scanner evidence, CLI usage, and security model.
+
+The [Workspace Builder guide](docs/workspaces/overview.md) covers services, connections, ports,
+environment boundaries, scanning, generation, Docker Compose, shared packages, presets, and CLI use.
 
 ## ForgeKi Desktop
 
