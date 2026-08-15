@@ -75,6 +75,8 @@ describe('ForgeKi program', () => {
       'plugin',
       'workspaces',
       'workspace',
+      'environments',
+      'deployment',
     ]);
   });
 

@@ -9,6 +9,7 @@ export const packageDirectories = [
   'packages/plugin-sdk',
   'packages/templates',
   'packages/workspaces',
+  'packages/deployments',
   'packages/plugins',
   'packages/plugins/plugin-docker',
   'packages/plugins/plugin-github-actions',

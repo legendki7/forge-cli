@@ -20,6 +20,13 @@ import type {
   WorkspaceGenerationResult,
   WorkspaceScanResult,
 } from '@forgecli7/workspaces';
+import type {
+  DeploymentPlanOptions,
+  DeploymentProfile,
+  DeploymentScanResult,
+  DeploymentTargetId,
+  EnvironmentProfileId,
+} from '@forgecli7/deployments';
 
 export const tauriBridge: DesktopBridge = {
   selectDestination() {
@@ -127,5 +134,30 @@ export const tauriBridge: DesktopBridge = {
 
   copyText(text: string) {
     return invoke('copy_text', { text });
+  },
+
+  scanDeployment(path: string) {
+    return invoke<DeploymentScanResult>('scan_deployment', { path });
+  },
+
+  planDeployment(
+    path: string,
+    environment: EnvironmentProfileId,
+    target: DeploymentTargetId,
+    options: DeploymentPlanOptions = {},
+  ) {
+    return invoke<DeploymentProfile>('plan_deployment', { path, environment, target, options });
+  },
+
+  exportDeployment(
+    path: string,
+    destination: string,
+    plan: DeploymentProfile,
+    options: DeploymentPlanOptions = {},
+  ) {
+    return invoke<{ destination: string; createdFiles: string[]; fingerprint: string }>(
+      'export_deployment',
+      { path, destination, plan, options },
+    );
   },
 };

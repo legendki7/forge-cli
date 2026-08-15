@@ -19,6 +19,13 @@ import type {
   WorkspaceGenerationResult,
 } from '@forgecli7/workspaces/generation';
 import type { WorkspaceScanResult } from '@forgecli7/workspaces/scanner';
+import type {
+  DeploymentPlanOptions,
+  DeploymentProfile,
+  DeploymentScanResult,
+  DeploymentTargetId,
+  EnvironmentProfileId,
+} from '@forgecli7/deployments';
 
 export type PackageManager = SupportedPackageManager;
 export type NavigationPage =
@@ -27,6 +34,8 @@ export type NavigationPage =
   | 'templates'
   | 'stack-builder'
   | 'workspace-builder'
+  | 'environments'
+  | 'deployment'
   | 'scan'
   | 'plugins'
   | 'tools'
@@ -52,6 +61,12 @@ export interface DesktopPreferences {
   confirmRequiredComponents: boolean;
   allowLocalCommunityPlugins: boolean;
   showExperimentalBundledPlugins: boolean;
+  defaultEnvironmentView: EnvironmentProfileId;
+  preferredDeploymentTarget: DeploymentTargetId;
+  defaultDockerProductionProfile: boolean;
+  defaultKubernetesReplicas: number;
+  includeDeploymentMetadata: boolean;
+  showAdvancedDeploymentOptions: boolean;
 }
 
 export type ActivityType =
@@ -76,7 +91,13 @@ export type ActivityType =
   | 'plugin-development-created'
   | 'workspace-configured'
   | 'workspace-generated'
-  | 'workspace-scanned';
+  | 'workspace-scanned'
+  | 'environment-profile-reviewed'
+  | 'deployment-readiness-checked'
+  | 'deployment-plan-generated'
+  | 'deployment-files-exported'
+  | 'deployment-export-blocked'
+  | 'deployment-drift-detected';
 export type ActivityResult = 'success' | 'warning' | 'failed';
 
 export interface ActivityEntry {
@@ -259,6 +280,19 @@ export interface DesktopBridge {
   createWorkspace?(plan: WorkspaceGenerationPlan): Promise<WorkspaceGenerationResult>;
   scanWorkspace?(path: string): Promise<WorkspaceScanResult>;
   copyText?(text: string): Promise<void>;
+  scanDeployment?(path: string): Promise<DeploymentScanResult>;
+  planDeployment?(
+    path: string,
+    environment: EnvironmentProfileId,
+    target: DeploymentTargetId,
+    options?: DeploymentPlanOptions,
+  ): Promise<DeploymentProfile>;
+  exportDeployment?(
+    path: string,
+    destination: string,
+    plan: DeploymentProfile,
+    options?: DeploymentPlanOptions,
+  ): Promise<{ destination: string; createdFiles: string[]; fingerprint: string }>;
 }
 
 export interface StackPlanRequest {

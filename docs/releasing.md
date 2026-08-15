@@ -22,6 +22,8 @@ workflow publishes automatically. The first public release must use the npm dist
 - [ ] The packed `@forgecli7/plugin-sdk` public import and plugin CLI help smoke checks pass
 - [ ] Local install/list/inspect/remove and a plugin-backed generation/scan smoke pass offline
 - [ ] Stack compatibility, generation-plan, CLI stack, scanner, and Desktop Stack Builder tests pass
+- [ ] Environment validation, deployment compatibility/generation, CLI, Desktop, export, and drift tests pass
+- [ ] Native Production/Kubernetes and Staging/Docker previews/export smokes pass without executing either tool
 - [ ] Offline smoke generation covers Next.js full stack, React/Vite, and Express without installs
 - [ ] Required JavaScript, declarations, package metadata, README, LICENSE, and shebang are present
 - [ ] Source tests, coverage, caches, Changesets, and monorepo configuration are absent from tarballs

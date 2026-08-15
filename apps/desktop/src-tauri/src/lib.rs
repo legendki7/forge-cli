@@ -255,6 +255,82 @@ async fn scan_workspace(
 }
 
 #[tauri::command]
+async fn scan_deployment(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    path: String,
+) -> Result<Value, String> {
+    let directory = verified_project(&state, &path)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "scan-deployment",
+        serde_json::json!({ "projectDirectory": directory }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn plan_deployment(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    path: String,
+    environment: String,
+    target: String,
+    options: Value,
+) -> Result<Value, String> {
+    let directory = verified_project(&state, &path)?;
+    run_typed_operation(
+        &app,
+        &state,
+        "plan-deployment",
+        serde_json::json!({
+            "projectDirectory": directory,
+            "environment": environment,
+            "target": target,
+            "options": options,
+        }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn export_deployment(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    path: String,
+    destination: String,
+    plan: Value,
+    options: Value,
+) -> Result<Value, String> {
+    let directory = verified_project(&state, &path)?;
+    let output = canonical_directory(&destination)?;
+    ensure_allowed(&state, &output)?;
+    let environment = plan
+        .get("environment")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "The deployment environment is invalid.".to_string())?;
+    let target = plan
+        .get("target")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "The deployment target is invalid.".to_string())?;
+    run_typed_operation(
+        &app,
+        &state,
+        "export-deployment",
+        serde_json::json!({
+            "projectDirectory": directory,
+            "destinationDirectory": output,
+            "environment": environment,
+            "target": target,
+            "options": options,
+            "reviewedPlan": plan,
+        }),
+    )
+    .await
+}
+
+#[tauri::command]
 fn copy_text(app: AppHandle, text: String) -> Result<(), String> {
     if text.len() > MAX_STATE_SIZE || text.chars().any(|character| character == '\0') {
         return Err("The text is too large or invalid.".into());
@@ -1041,6 +1117,9 @@ pub fn run() {
             plan_workspace,
             create_workspace,
             scan_workspace,
+            scan_deployment,
+            plan_deployment,
+            export_deployment,
             copy_text
         ])
         .run(tauri::generate_context!())

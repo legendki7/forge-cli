@@ -33,6 +33,24 @@ export default defineConfig({
       '@forgecli7/templates': fileURLToPath(
         new URL('../../packages/templates/src/index.ts', import.meta.url),
       ),
+      '@forgecli7/workspaces/model': fileURLToPath(
+        new URL('../../packages/workspaces/src/model.ts', import.meta.url),
+      ),
+      '@forgecli7/workspaces/generation': fileURLToPath(
+        new URL('../../packages/workspaces/src/generation.ts', import.meta.url),
+      ),
+      '@forgecli7/workspaces/scanner': fileURLToPath(
+        new URL('../../packages/workspaces/src/scanner.ts', import.meta.url),
+      ),
+      '@forgecli7/workspaces': fileURLToPath(
+        new URL('../../packages/workspaces/src/index.ts', import.meta.url),
+      ),
+      '@forgecli7/deployments/browser': fileURLToPath(
+        new URL('../../packages/deployments/src/browser.ts', import.meta.url),
+      ),
+      '@forgecli7/deployments': fileURLToPath(
+        new URL('../../packages/deployments/src/index.ts', import.meta.url),
+      ),
     },
   },
   test: {

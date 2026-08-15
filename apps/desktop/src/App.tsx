@@ -32,6 +32,12 @@ const StackBuilderPage = lazy(() =>
 const WorkspaceBuilderPage = lazy(() =>
   import('./WorkspaceBuilder').then((module) => ({ default: module.WorkspaceBuilderPage })),
 );
+const EnvironmentsPage = lazy(() =>
+  import('./DeploymentPages').then((module) => ({ default: module.EnvironmentsPage })),
+);
+const DeploymentPage = lazy(() =>
+  import('./DeploymentPages').then((module) => ({ default: module.DeploymentPage })),
+);
 
 const navigation: readonly { id: NavigationPage; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: 'H' },
@@ -39,6 +45,8 @@ const navigation: readonly { id: NavigationPage; label: string; icon: string }[]
   { id: 'templates', label: 'Templates', icon: 'T' },
   { id: 'stack-builder', label: 'Stack Builder', icon: 'B' },
   { id: 'workspace-builder', label: 'Workspace Builder', icon: 'W' },
+  { id: 'environments', label: 'Environments', icon: 'E' },
+  { id: 'deployment', label: 'Deployment', icon: 'R' },
   { id: 'scan', label: 'Scan Project', icon: 'S' },
   { id: 'plugins', label: 'Marketplace', icon: 'P' },
   { id: 'tools', label: 'Developer Tools', icon: 'D' },
@@ -338,6 +346,30 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
             onScanned={projectScanned}
             onActivity={record}
           />
+        );
+      case 'environments':
+        return (
+          <Suspense fallback={<p className="loading-state">Loading Environments…</p>}>
+            <EnvironmentsPage
+              bridge={bridge}
+              initialPath={selectedProject}
+              preferences={state.preferences}
+              onPath={setSelectedProject}
+              onActivity={record}
+            />
+          </Suspense>
+        );
+      case 'deployment':
+        return (
+          <Suspense fallback={<p className="loading-state">Loading Deployment…</p>}>
+            <DeploymentPage
+              bridge={bridge}
+              initialPath={selectedProject}
+              preferences={state.preferences}
+              onPath={setSelectedProject}
+              onActivity={record}
+            />
+          </Suspense>
         );
       case 'plugins':
         return (

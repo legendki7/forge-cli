@@ -1193,6 +1193,79 @@ pre {
   text-align: center;
 }
 
+.deployment-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-tabs,
+.deployment-controls,
+.inline-actions,
+.environment-comparison {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.profile-tabs button[aria-selected='true'] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.deployment-controls label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 12rem;
+  flex: 1;
+}
+
+.deployment-controls label:first-child {
+  min-width: 22rem;
+}
+
+.table-scroll {
+  overflow: auto;
+}
+
+.table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-scroll th,
+.table-scroll td {
+  padding: 0.65rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.environment-comparison article {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 12rem;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+}
+
+.deployment-export {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.deployment-export .inline-actions input {
+  flex: 1;
+  min-width: 18rem;
+}
+
+.confirmation {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 @media (max-width: 1100px) {
   .stack-workspace {
     grid-template-columns: 1fr 1fr;

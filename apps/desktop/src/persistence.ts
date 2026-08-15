@@ -36,6 +36,12 @@ export const defaultPreferences: DesktopPreferences = {
   confirmRequiredComponents: true,
   allowLocalCommunityPlugins: true,
   showExperimentalBundledPlugins: false,
+  defaultEnvironmentView: 'local',
+  preferredDeploymentTarget: 'docker-compose',
+  defaultDockerProductionProfile: true,
+  defaultKubernetesReplicas: 2,
+  includeDeploymentMetadata: true,
+  showAdvancedDeploymentOptions: false,
 };
 
 export function createDefaultDesktopState(): PersistedDesktopState {
@@ -93,6 +99,20 @@ export function migrateDesktopState(value: unknown): PersistedDesktopState {
       confirmRequiredComponents: boolean(preferences.confirmRequiredComponents, true),
       allowLocalCommunityPlugins: boolean(preferences.allowLocalCommunityPlugins, true),
       showExperimentalBundledPlugins: boolean(preferences.showExperimentalBundledPlugins, false),
+      defaultEnvironmentView: oneOf(
+        preferences.defaultEnvironmentView,
+        ['local', 'staging', 'production'],
+        'local',
+      ),
+      preferredDeploymentTarget: oneOf(
+        preferences.preferredDeploymentTarget,
+        ['docker-compose', 'generic-docker', 'kubernetes', 'static-export', 'node-server'],
+        'docker-compose',
+      ),
+      defaultDockerProductionProfile: boolean(preferences.defaultDockerProductionProfile, true),
+      defaultKubernetesReplicas: boundedInteger(preferences.defaultKubernetesReplicas, 2, 1, 20),
+      includeDeploymentMetadata: boolean(preferences.includeDeploymentMetadata, true),
+      showAdvancedDeploymentOptions: boolean(preferences.showAdvancedDeploymentOptions, false),
     },
     recentProjects: recent.map(readRecentProject).filter(isPresent).slice(0, MAX_RECENT_PROJECTS),
     activity: activity.map(readActivity).filter(isPresent).slice(0, MAX_ACTIVITY_ENTRIES),
@@ -263,6 +283,12 @@ function readActivity(value: unknown): ActivityEntry | undefined {
         'workspace-configured',
         'workspace-generated',
         'workspace-scanned',
+        'environment-profile-reviewed',
+        'deployment-readiness-checked',
+        'deployment-plan-generated',
+        'deployment-files-exported',
+        'deployment-export-blocked',
+        'deployment-drift-detected',
       ],
       'plugin-warning',
     ),
@@ -327,6 +353,17 @@ function safeText(value: unknown, limit: number): string {
 
 function boolean(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function boundedInteger(
+  value: unknown,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  return typeof value === 'number' && Number.isInteger(value)
+    ? Math.max(minimum, Math.min(maximum, value))
+    : fallback;
 }
 
 function oneOf<const T extends string>(value: unknown, values: readonly T[], fallback: T): T {

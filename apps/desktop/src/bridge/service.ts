@@ -44,6 +44,15 @@ import type {
   ProgressEvent,
   ProgressStepId,
 } from '../types';
+import {
+  createDeploymentPlan,
+  exportDeploymentPlan,
+  parseDeploymentTargetId,
+  parseEnvironmentProfileId,
+  scanDeploymentProject,
+  type DeploymentPlanOptions,
+  type DeploymentProfile,
+} from '@forgecli7/deployments';
 
 export interface WorkerEnvelope {
   operationId: string;
@@ -62,7 +71,10 @@ export interface WorkerEnvelope {
     | 'plugin-create'
     | 'plan-workspace'
     | 'create-workspace'
-    | 'scan-workspace';
+    | 'scan-workspace'
+    | 'scan-deployment'
+    | 'plan-deployment'
+    | 'export-deployment';
   request: unknown;
 }
 
@@ -333,6 +345,29 @@ async function handleOperation(
       result = await executeWorkspaceGenerationPlan(trustedPlan);
     } else if (operation === 'scan-workspace') {
       result = await scanWorkspace(readDirectoryRequest(request));
+    } else if (operation === 'scan-deployment') {
+      result = await scanDeploymentProject(readDirectoryRequest(request));
+    } else if (operation === 'plan-deployment') {
+      const input = readDeploymentRequest(request, false);
+      const scan = await scanDeploymentProject(input.projectDirectory);
+      result = createDeploymentPlan(
+        scan.project,
+        parseEnvironmentProfileId(input.environment),
+        parseDeploymentTargetId(input.target, scan.project),
+        input.options,
+      );
+    } else if (operation === 'export-deployment') {
+      const input = readDeploymentRequest(request, true);
+      const scan = await scanDeploymentProject(input.projectDirectory);
+      const trusted = createDeploymentPlan(
+        scan.project,
+        parseEnvironmentProfileId(input.environment),
+        parseDeploymentTargetId(input.target, scan.project),
+        input.options,
+      );
+      if (JSON.stringify(trusted) !== JSON.stringify(input.reviewedPlan))
+        throw new Error('The reviewed deployment plan no longer matches the trusted plan.');
+      result = await exportDeploymentPlan(trusted, input.destinationDirectory!);
     } else if (operation === 'scan') {
       result = await scanProjectDirectory(readDirectoryRequest(request));
     } else if (operation === 'inspect-plugins') {
@@ -377,6 +412,62 @@ async function handleOperation(
   } catch (error) {
     send({ type: 'error', payload: publicError(error) });
   }
+}
+
+function readDeploymentRequest(
+  value: unknown,
+  exporting: boolean,
+): {
+  projectDirectory: string;
+  environment: string;
+  target: string;
+  options: DeploymentPlanOptions;
+  destinationDirectory?: string;
+  reviewedPlan?: DeploymentProfile;
+} {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some(
+      (key) =>
+        ![
+          'projectDirectory',
+          'environment',
+          'target',
+          'options',
+          'destinationDirectory',
+          'reviewedPlan',
+        ].includes(key),
+    ) ||
+    typeof value.environment !== 'string' ||
+    typeof value.target !== 'string' ||
+    (value.options !== undefined && !isRecord(value.options)) ||
+    (exporting &&
+      (!isRecord(value.reviewedPlan) || typeof value.destinationDirectory !== 'string')) ||
+    (!exporting && (value.reviewedPlan !== undefined || value.destinationDirectory !== undefined))
+  )
+    invalidPayload();
+  const rawOptions = isRecord(value.options) ? value.options : {};
+  if (
+    Object.keys(rawOptions).some(
+      (key) => !['replicas', 'resources', 'includeMetadata'].includes(key),
+    ) ||
+    (rawOptions.replicas !== undefined && typeof rawOptions.replicas !== 'number') ||
+    (rawOptions.includeMetadata !== undefined && typeof rawOptions.includeMetadata !== 'boolean') ||
+    (rawOptions.resources !== undefined && !isRecord(rawOptions.resources))
+  )
+    invalidPayload();
+  return {
+    projectDirectory: validateAbsoluteDirectory(value.projectDirectory),
+    environment: value.environment,
+    target: value.target,
+    options: rawOptions as DeploymentPlanOptions,
+    ...(exporting
+      ? {
+          destinationDirectory: validateAbsoluteDirectory(value.destinationDirectory),
+          reviewedPlan: value.reviewedPlan as unknown as DeploymentProfile,
+        }
+      : {}),
+  };
 }
 
 function readWorkspaceRequest(

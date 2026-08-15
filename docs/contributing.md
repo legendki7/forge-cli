@@ -2,6 +2,11 @@
 
 Workspace domain features belong in `@forgecli7/workspaces`; CLI and Desktop remain adapters. Add validation, plan determinism, filesystem safety, scanner evidence, and regression tests for every service or connection. Never add executable commands or hooks to workspace configuration.
 
+Environment and deployment domain features belong in `@forgecli7/deployments`. Keep models portable,
+schemas separate from values, generators deterministic, preview identical to export, and target
+compatibility honest. New output requires collision/traversal/symlink tests and must never add cloud,
+Docker, Kubernetes, shell, credential, or network execution.
+
 1. Install Node.js 20, 22, or 24 and pnpm 9+.
 2. Run `pnpm install`.
 3. Create a focused branch and add a changeset when public package behavior changes.

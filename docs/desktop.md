@@ -1,5 +1,10 @@
 # ForgeKi Desktop
 
+Phase 5 adds Environments and Deployment pages. They use `@forgecli7/deployments` through the fixed
+worker boundary for schema matrices, compatible target filtering, readiness, exact previews,
+confirmed export, fingerprints, and drift. ForgeKi generates deployment configuration; it does not
+deploy applications.
+
 Workspace Builder is a lazy-loaded visual canvas for services and typed connections. It supports built-in/custom presets, deterministic validation, destination selection, exact file-owner review, confirmed atomic generation, config/ASCII copy, and read-only import. Workspace state is local and bounded; recent workspaces are not rescanned on startup.
 
 ForgeKi Desktop is a local developer studio for creating, inspecting, and configuring ForgeKi
@@ -49,6 +54,8 @@ implementation of project rules.
   `git init` policy.
 - `@forgecli7/plugins` loads the trusted catalog in Docker then GitHub Actions order.
 - `@forgecli7/plugin-docker` and `@forgecli7/plugin-github-actions` generate optional files.
+- `@forgecli7/workspaces` owns the multi-service architecture model and local generator.
+- `@forgecli7/deployments` owns environment/deployment plans and safe export.
 
 The worker verifies the generated directory again with shared project detection before reporting
 success. Plugin and Git failures remain warnings when the safe base project was created.
@@ -151,6 +158,10 @@ collapse preference.
   clearing. It stores no file contents, secrets, or stack traces.
 - **Settings** controls system/light/dark theme, sidebar, project defaults, Beginner/Advanced mode,
   local-history clearing, and reset. It displays the application identity and privacy promises.
+- **Environments** shows Local, Staging, and Production schemas, ownership, secret/public boundaries,
+  workspace topology, profile comparison, and drift without showing values.
+- **Deployment** filters compatible targets, reports readiness, previews exact files, and exports only
+  after native folder selection and confirmation. It has no Deploy button.
 
 ## Built-in templates
 

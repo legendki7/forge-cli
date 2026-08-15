@@ -1,6 +1,6 @@
 # Architecture
 
-Phase 4 adds `@forgecli7/workspaces` as a public shared domain package. CLI and Desktop depend on its closed model, deterministic validator/planner, atomic generator, and read-only scanner. Desktop never writes workspace files directly: its worker reparses and recomputes the reviewed plan behind a native selected-directory boundary.
+Phase 5 adds `@forgecli7/deployments` as the shared environment/deployment domain. It owns portable environment schemas, target compatibility, readiness, exact deterministic file plans, fingerprints, non-overwriting export, and drift scanning. CLI and Desktop are adapters. The Desktop worker rescans and recomputes every reviewed plan before export behind a native selected-directory boundary.
 
 ForgeKi is organized as a pnpm monorepo. Each package owns one concern and publishes a deliberately
 small public API.
@@ -28,6 +28,8 @@ narrow typed Rust commands and never exposes a general shell or filesystem API t
   It depends only on `core` and has no knowledge of Commander.js.
 - **`@forgecli7/plugin-github-actions`** generates deterministic, script-aware CI workflows from the
   shared project detection result. Bun rendering is isolated from Node package-manager rendering.
+- **`@forgecli7/deployments`** owns environment profile schemas, secret/public validation, deployment
+  target compatibility, deterministic generators, readiness, safe export, metadata, and drift.
 
 The browser-safe `@forgecli7/core/stacks` entry owns the built-in stack registry, presets, and pure
 compatibility engine. `@forgecli7/templates/generation-plan` consumes that model and merges trusted
@@ -137,10 +139,20 @@ Developer-tool checks use ten fixed executable/argument definitions, `shell: fal
 bounded sanitized output. Results distinguish installed, not detected, unavailable, and check
 failed instead of treating every failure as absence.
 
+## Deployment trust boundary
+
+Deployment planning contains no subprocess, network, Docker, Kubernetes, or cloud adapter. React
+requests a plan; the worker scans and creates it from shared code. Export sends the reviewed plan
+back; the worker rescans, recomputes, byte-compares, rejects collisions/symlinks/traversal, and only
+then writes. Preview and export therefore use the same content.
+
+Community deployment contributions are intentionally deferred. Existing plugins remain declarative
+and cannot contribute images, arbitrary YAML, commands, credentials, or network operations.
+
 ## Current scope
 
-The Docker plugin creates local configuration files only. Deployment, image building, registry
-publishing, dependency installation, template rendering, and project validation remain out of scope.
+ForgeKi generates deployment configuration but does not deploy. Image building, registry publishing,
+cluster access, cloud authentication, infrastructure creation, and secret storage remain out of scope.
 
 ForgeKi Desktop supports five Next.js TypeScript App Router presentations over the same safe
 scaffolder. It is not an alternative project engine: it is a graphical adapter over the same

@@ -964,6 +964,77 @@ export function SettingsPage({
           <small>Databases and ORMs are never selected automatically.</small>
         </section>
         <section className="panel">
+          <h2>Deployment defaults</h2>
+          <label className="field">
+            <span>Default environment view</span>
+            <select
+              aria-label="Default environment view"
+              value={preferences.defaultEnvironmentView}
+              onChange={(event) =>
+                update(
+                  'defaultEnvironmentView',
+                  event.target.value as DesktopPreferences['defaultEnvironmentView'],
+                )
+              }
+            >
+              <option value="local">Local</option>
+              <option value="staging">Staging</option>
+              <option value="production">Production</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Preferred deployment target</span>
+            <select
+              aria-label="Preferred deployment target"
+              value={preferences.preferredDeploymentTarget}
+              onChange={(event) =>
+                update(
+                  'preferredDeploymentTarget',
+                  event.target.value as DesktopPreferences['preferredDeploymentTarget'],
+                )
+              }
+            >
+              <option value="docker-compose">Docker Compose</option>
+              <option value="generic-docker">Generic Docker</option>
+              <option value="kubernetes">Kubernetes</option>
+              <option value="static-export">Static Export</option>
+              <option value="node-server">Node Server</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Default Kubernetes replicas</span>
+            <input
+              aria-label="Default Kubernetes replicas"
+              type="number"
+              min="1"
+              max="20"
+              value={preferences.defaultKubernetesReplicas}
+              onChange={(event) =>
+                update(
+                  'defaultKubernetesReplicas',
+                  Math.max(1, Math.min(20, Number(event.target.value))),
+                )
+              }
+            />
+          </label>
+          <OptionRow
+            label="Use production Docker profile by default"
+            checked={preferences.defaultDockerProductionProfile}
+            onChange={(value) => update('defaultDockerProductionProfile', value)}
+          />
+          <OptionRow
+            label="Include deployment metadata"
+            checked={preferences.includeDeploymentMetadata}
+            onChange={(value) => update('includeDeploymentMetadata', value)}
+          />
+          <OptionRow
+            label="Show advanced deployment options"
+            checked={preferences.showAdvancedDeploymentOptions}
+            onChange={(value) => update('showAdvancedDeploymentOptions', value)}
+          />
+          <small>ForgeKi stores no cloud credentials or deployment secrets.</small>
+        </section>
+        <section className="panel">
           <h2>Plugin platform</h2>
           <OptionRow
             label="Allow local community plugins"
@@ -1121,6 +1192,12 @@ function activityLabel(type: ActivityType) {
       'workspace-configured': 'Workspace configured',
       'workspace-generated': 'Workspace generated',
       'workspace-scanned': 'Workspace scanned',
+      'environment-profile-reviewed': 'Environment profile reviewed',
+      'deployment-readiness-checked': 'Deployment readiness checked',
+      'deployment-plan-generated': 'Deployment plan generated',
+      'deployment-files-exported': 'Deployment files exported',
+      'deployment-export-blocked': 'Deployment export blocked',
+      'deployment-drift-detected': 'Deployment drift detected',
     } as const
   )[type];
 }

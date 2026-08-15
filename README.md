@@ -45,6 +45,9 @@ and production readiness or cross-platform support is not yet claimed.
 - Offline Marketplace with Built-in, Bundled, and Local providers
 - Visual multi-service Workspace Builder with typed services, connections, and deterministic ports
 - Atomic monorepo generation with optional Docker Compose and workspace-aware CI
+- Local/Staging/Production environment schemas with strict secret/browser boundaries
+- Deterministic Docker, Kubernetes, Static, and Node deployment configuration previews and exports
+- Deployment readiness, architecture fingerprints, collision-safe export, and drift detection
 
 ## Requirements
 
@@ -88,6 +91,8 @@ pnpm dev -- plugins validate ./examples/plugins/editorconfig
 pnpm dev -- create api --framework express --database sqlite --orm drizzle --testing vitest
 pnpm dev -- workspaces presets
 pnpm dev -- workspace create my-platform --preset saas-foundation --no-git
+pnpm dev -- environments list
+pnpm dev -- deployment plan ./my-platform --env production --target kubernetes
 ```
 
 Run `forge add docker` from a Node.js project to create a starter `Dockerfile` and `.dockerignore`.
@@ -115,6 +120,11 @@ Existing files are always preserved, so the command is safe to run repeatedly.
 | `forge workspace create`   | Atomically generate a validated local monorepo                 |
 | `forge workspace check P`  | Scan a workspace read-only with explicit evidence              |
 | `forge workspace validate` | Validate a closed workspace JSON configuration                 |
+| `forge environments list`  | List Local, Staging, and Production schema profiles            |
+| `forge deployment targets` | List or filter file-generation targets                         |
+| `forge deployment check`   | Assess readiness without changing files                        |
+| `forge deployment plan`    | Preview the exact deterministic deployment plan                |
+| `forge deployment export`  | Confirm and export configuration without overwriting           |
 
 ## Repository layout
 
@@ -128,6 +138,7 @@ forge-cli/
 |   |-- plugin-sdk/             # Declarative manifest types and validation
 |   |-- templates/              # Template registry boundary
 |   |-- workspaces/             # Shared multi-service model, generator, and scanner
+|   |-- deployments/            # Environment, readiness, deployment plans, export, and drift
 |   `-- plugins/                # Plugin registry and loading
 |       `-- plugin-docker/      # Built-in Docker plugin
 |       `-- plugin-github-actions/ # Built-in GitHub Actions plugin
@@ -147,10 +158,14 @@ compatibility rules, presets, shared generation plan, scanner evidence, CLI usag
 The [Workspace Builder guide](docs/workspaces/overview.md) covers services, connections, ports,
 environment boundaries, scanning, generation, Docker Compose, shared packages, presets, and CLI use.
 
+The [Deployment Profiles guide](docs/deployment/overview.md) covers environments, secret safety,
+compatible file-generation targets, readiness, Docker/Kubernetes output, export, and drift.
+
 ## ForgeKi Desktop
 
 ForgeKi Desktop opens on a persistent local application shell with Home, Create Project, Templates,
-Stack Builder, Scan Project, Marketplace, Developer Tools, Activity, and Settings pages. Its creation wizard
+Stack Builder, Workspace Builder, Environments, Deployment, Scan Project, Marketplace, Developer Tools,
+Activity, and Settings pages. Its creation wizard
 uses the same project-name validation, scaffolder, detection engine, and trusted built-in plugins as
 the CLI. It never installs project dependencies.
 
@@ -182,6 +197,9 @@ build command reports missing prerequisites and never installs them automaticall
 
 ForgeKi Desktop requires no account, API key, external API, cloud service, analytics, telemetry, or
 AI feature. Project source contents are not persisted or uploaded.
+
+ForgeKi generates deployment configuration. ForgeKi does not deploy applications in Phase 5. It
+does not authenticate to clouds, push images, contact Kubernetes, or store deployment secrets.
 
 ## Plugin platform
 

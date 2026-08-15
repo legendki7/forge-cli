@@ -136,6 +136,22 @@ integrity metadata, and never executes code or downloads packages. Corrupted plu
 but disabled. Removal deletes only ForgeKi's installed copy; generated project files remain. See
 [plugin development](plugins/development.md) for the complete workflow.
 
+## `forge environments` and `forge deployment`
+
+ForgeKi can list safe environment profiles, filter deployment targets, check readiness, preview the
+exact deterministic configuration, and export after collision checks and confirmation:
+
+```bash
+forge environments list
+forge deployment targets ./my-platform
+forge deployment check ./my-platform --env production --target kubernetes
+forge deployment plan ./my-platform --env production --target kubernetes
+forge deployment export ./my-platform --env staging --target docker --output ./deployment
+```
+
+There is no `forge deploy` command. These operations do not authenticate, contact infrastructure,
+start containers, invoke Kubernetes, or display secret values. See [deployment CLI](deployment/cli.md).
+
 ## Known limitations
 
 - Detection is limited to Node.js projects and the documented frameworks.
