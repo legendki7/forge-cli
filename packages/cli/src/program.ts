@@ -7,6 +7,11 @@ import { registerStacksCommand } from './commands/stacks.js';
 import { registerPluginCommands } from './commands/plugins.js';
 import { registerWorkspaceCommands } from './commands/workspaces.js';
 import { registerDeploymentCommands } from './commands/deployment.js';
+import {
+  defaultMarketplaceDependencies,
+  registerMarketplaceCommands,
+  type MarketplaceCommandDependencies,
+} from './commands/marketplace.js';
 import { createDefaultContext, type CommandContext } from './context.js';
 import { readCliPackageMetadata } from './package-metadata.js';
 
@@ -15,6 +20,7 @@ export function createProgram(
   plugins: PluginRegistry = loadPlugins(),
   createDependencies: CreateCommandDependencies = {},
   version: string = readCliPackageMetadata().version,
+  marketplaceDependencies: MarketplaceCommandDependencies = defaultMarketplaceDependencies(),
 ): Command {
   const program = new Command();
 
@@ -33,7 +39,8 @@ export function createProgram(
   registerAddCommand(program, context, plugins);
   registerCheckCommand(program, context);
   registerStacksCommand(program, context);
-  registerPluginCommands(program, context);
+  registerPluginCommands(program, context, marketplaceDependencies.marketplace);
+  registerMarketplaceCommands(program, context, marketplaceDependencies);
   registerWorkspaceCommands(program, context);
   registerDeploymentCommands(program, context);
 

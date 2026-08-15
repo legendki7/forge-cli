@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { writeFile } from 'node:fs/promises';
 import type { Command } from 'commander';
 import {
   BuiltInCatalogProvider,
@@ -9,9 +10,15 @@ import {
   createPluginStarter,
 } from '@forgecli7/plugins';
 import type { PluginSafetyReport } from '@forgecli7/plugin-sdk';
+import { buildPluginPackage, type MarketplaceService } from '@forgecli7/marketplace';
+import inquirer from 'inquirer';
 import type { CommandContext } from '../context.js';
 
-export function registerPluginCommands(program: Command, context: CommandContext): void {
+export function registerPluginCommands(
+  program: Command,
+  context: CommandContext,
+  marketplace: (context: CommandContext) => MarketplaceService,
+): void {
   const plugins = program.command('plugins').description('Manage restricted declarative plugins');
   plugins
     .command('list')
@@ -33,6 +40,118 @@ export function registerPluginCommands(program: Command, context: CommandContext
                 `${entry.id}  ${entry.version}  ${entry.builtIn ? 'Built-in · Trusted' : entry.installed ? 'Community · Installed · Restricted' : 'Bundled community example · Not installed'}`,
             ),
           ].join('\n'),
+        );
+      }),
+    );
+  plugins
+    .command('verify-package <path>')
+    .description('Build and verify a deterministic declarative plugin package')
+    .action(async (source: string) =>
+      run(context, async () => {
+        const inspected = await buildPluginPackage(path.resolve(context.cwd, source));
+        context.write(
+          `Verified declarative package ${inspected.manifest.id}@${inspected.manifest.version}\nSHA-256: ${inspected.digest}\nFiles: ${inspected.files.length}\nNo plugin code was executed.`,
+        );
+      }),
+    );
+  plugins
+    .command('package <path>')
+    .description('Create a deterministic declarative .forgeki-plugin bundle')
+    .requiredOption('--output <file>', 'New output file; existing files are preserved')
+    .action(async (source: string, options: { output: string }) =>
+      run(context, async () => {
+        const inspected = await buildPluginPackage(path.resolve(context.cwd, source));
+        const output = path.resolve(context.cwd, options.output);
+        if (path.extname(output) !== '.forgeki-plugin')
+          throw new Error('Plugin package output must use .forgeki-plugin.');
+        await writeFile(output, inspected.bytes, { flag: 'wx' });
+        context.write(
+          `Created deterministic package ${output}\nSHA-256: ${inspected.digest}\nNo plugin code was executed.`,
+        );
+      }),
+    );
+  plugins
+    .command('install-remote <plugin-id>')
+    .description('Install a plugin resolved through verified Marketplace metadata')
+    .option('--yes', 'Confirm installation non-interactively')
+    .action(async (id: string, options: { yes?: boolean }) =>
+      run(context, async () => {
+        const service = marketplace(context);
+        const review = await service.prepareInstall(id);
+        context.write(
+          [
+            `Publisher: ${review.plugin.publisherName} · ${review.plugin.publisherStatus}`,
+            `Version: ${review.plugin.version}`,
+            'Signature: verified',
+            'Package integrity: verified',
+            `Permissions: ${review.plugin.permissions.join(', ') || 'None'}`,
+            `Files: ${review.packageFiles.join(', ')}`,
+            `Generated files: ${review.safety.generatedFiles}`,
+            `Dependencies: ${review.safety.dependencies}`,
+            `Scripts: ${review.safety.scripts}`,
+            `Environment variables: ${review.safety.environmentVariables}`,
+            `Scanner rules: ${review.safety.scannerRules}`,
+            'Declared scripts are package.json data only; ForgeKi does not execute them.',
+          ].join('\n'),
+        );
+        const confirmed =
+          options.yes ||
+          (
+            await inquirer.prompt<{ confirmed: boolean }>([
+              {
+                type: 'confirm',
+                name: 'confirmed',
+                message: 'Install verified declarative plugin?',
+                default: false,
+              },
+            ])
+          ).confirmed;
+        if (!confirmed) {
+          context.write('Installation cancelled.');
+          return;
+        }
+        const installed = await service.install(id, true);
+        context.write(
+          `Installed ${installed.manifest.id}@${installed.manifest.version}. No plugin code was executed.`,
+        );
+      }),
+    );
+  plugins
+    .command('updates')
+    .description('List verified updates for installed remote plugins')
+    .action(() =>
+      run(context, async () => {
+        const entries = await marketplace(context).updates();
+        context.write(
+          entries.length
+            ? entries
+                .map(
+                  (entry) =>
+                    `${entry.id}  installed ${entry.installedVersion}  available ${entry.version}${entry.revoked ? ' · REVOKED' : ''}`,
+                )
+                .join('\n')
+            : 'No remote plugin updates are available.',
+        );
+      }),
+    );
+  plugins
+    .command('update <plugin-id>')
+    .description('Update an installed remote plugin after verification')
+    .option('--yes')
+    .option('--accept-permissions')
+    .action((id: string, options: { yes?: boolean; acceptPermissions?: boolean }) =>
+      run(context, async () => {
+        if (!options.yes)
+          throw new Error(
+            'Explicit confirmation is required. Re-run with --yes after reviewing forge marketplace show.',
+          );
+        const installed = await marketplace(context).update(
+          id,
+          true,
+          Boolean(options.acceptPermissions),
+        );
+        context.write(
+          `Updated ${installed.manifest.id} to ${installed.manifest.version}. No plugin code was executed.`,
         );
       }),
     );

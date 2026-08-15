@@ -46,6 +46,9 @@ describe('release candidate audit utilities', () => {
       ]),
     );
     expect(classifyOccurrence('tests/fixture.ts', 'Windows user directory')).toBe('test fixture');
+    expect(classifyOccurrence('packages/example/src/network.test.ts', 'file URL')).toBe(
+      'test fixture',
+    );
   });
 
   it('detects a package-scope inconsistency', async () => {

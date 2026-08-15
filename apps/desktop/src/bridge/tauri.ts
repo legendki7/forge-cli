@@ -27,6 +27,14 @@ import type {
   DeploymentTargetId,
   EnvironmentProfileId,
 } from '@forgecli7/deployments';
+import type {
+  ApplicationUpdateCheck,
+  MarketplaceSearchOptions,
+  MarketplaceStatus,
+  PluginInstallReview,
+  RemotePluginView,
+  UpdateChannel,
+} from '@forgecli7/marketplace/browser';
 
 export const tauriBridge: DesktopBridge = {
   selectDestination() {
@@ -159,5 +167,49 @@ export const tauriBridge: DesktopBridge = {
       'export_deployment',
       { path, destination, plan, options },
     );
+  },
+
+  marketplaceStatus() {
+    return invoke<MarketplaceStatus>('marketplace_status');
+  },
+
+  refreshMarketplace() {
+    return invoke<{ pluginCount: number; verifiedAt: string }>('refresh_marketplace');
+  },
+
+  clearMarketplaceCache() {
+    return invoke('clear_marketplace_cache');
+  },
+
+  searchMarketplace(options: MarketplaceSearchOptions = {}) {
+    return invoke<RemotePluginView[]>('search_marketplace', { options });
+  },
+
+  showMarketplacePlugin(id: string) {
+    return invoke<RemotePluginView>('show_marketplace_plugin', { id });
+  },
+
+  reviewRemotePlugin(id: string) {
+    return invoke<PluginInstallReview>('review_remote_plugin', { id });
+  },
+
+  installRemotePlugin(id: string, confirmed: boolean) {
+    return invoke<PluginCatalogEntry>('install_remote_plugin', { id, confirmed });
+  },
+
+  listRemotePluginUpdates() {
+    return invoke<RemotePluginView[]>('list_remote_plugin_updates');
+  },
+
+  updateRemotePlugin(id: string, confirmed: boolean, confirmPermissions = false) {
+    return invoke<PluginCatalogEntry>('update_remote_plugin', {
+      id,
+      confirmed,
+      confirmPermissions,
+    });
+  },
+
+  checkApplicationUpdate(channel: UpdateChannel) {
+    return invoke<ApplicationUpdateCheck>('check_application_update', { channel });
   },
 };

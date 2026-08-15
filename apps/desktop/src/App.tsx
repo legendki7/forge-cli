@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { BUILTIN_TEMPLATES, type TemplateId } from '@forgecli7/templates/catalog';
 import { CreateWizard } from './CreateWizard';
 import {
@@ -10,6 +10,7 @@ import {
   TemplatesPage,
 } from './pages';
 import { MarketplacePage } from './Marketplace';
+import { SecurityPage } from './SecurityPage';
 import type { PluginCatalogEntry } from '@forgecli7/plugins';
 import {
   addActivity,
@@ -49,6 +50,7 @@ const navigation: readonly { id: NavigationPage; label: string; icon: string }[]
   { id: 'deployment', label: 'Deployment', icon: 'R' },
   { id: 'scan', label: 'Scan Project', icon: 'S' },
   { id: 'plugins', label: 'Marketplace', icon: 'P' },
+  { id: 'security', label: 'Security', icon: 'X' },
   { id: 'tools', label: 'Developer Tools', icon: 'D' },
   { id: 'activity', label: 'Activity', icon: 'A' },
   { id: 'settings', label: 'Settings', icon: 'G' },
@@ -61,6 +63,8 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>('nextjs-blank');
   const [selectedProject, setSelectedProject] = useState<string>();
   const [pluginCatalog, setPluginCatalog] = useState<PluginCatalogEntry[]>([]);
+  const automaticMarketplaceCheckStarted = useRef(false);
+  const automaticUpdateCheckStarted = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -89,6 +93,58 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
     document.documentElement.dataset.theme = state.preferences.theme;
     if (loaded) void bridge.saveDesktopState(state).catch(() => undefined);
   }, [bridge, loaded, state]);
+
+  useEffect(() => {
+    if (
+      !loaded ||
+      automaticMarketplaceCheckStarted.current ||
+      !state.preferences.remoteMarketplaceEnabled ||
+      !state.preferences.automaticallyCheckMarketplace ||
+      !bridge.marketplaceStatus ||
+      !bridge.refreshMarketplace
+    )
+      return;
+    automaticMarketplaceCheckStarted.current = true;
+    void bridge
+      .marketplaceStatus()
+      .then(async (status) => {
+        const lastRefresh = status.lastSuccessfulRefresh
+          ? Date.parse(status.lastSuccessfulRefresh)
+          : Number.NaN;
+        const due = !Number.isFinite(lastRefresh) || Date.now() - lastRefresh >= 86_400_000;
+        if (!status.configured || !due) return;
+        await bridge.refreshMarketplace?.();
+        setPluginCatalog(await bridge.listMarketplacePlugins());
+      })
+      .catch(() => undefined);
+  }, [bridge, loaded, state.preferences]);
+
+  useEffect(() => {
+    if (
+      !loaded ||
+      automaticUpdateCheckStarted.current ||
+      !state.preferences.automaticallyCheckUpdates ||
+      !bridge.checkApplicationUpdate
+    )
+      return;
+    const lastCheck = state.activity.find(({ type }) => type === 'update-checked')?.timestamp;
+    if (lastCheck && Date.now() - Date.parse(lastCheck) < 86_400_000) return;
+    automaticUpdateCheckStarted.current = true;
+    void bridge
+      .checkApplicationUpdate(state.preferences.updateChannel)
+      .then((result) => {
+        setState((current) =>
+          addActivity(current, {
+            id: `${Date.now()}-automatic-update-check`,
+            type: 'update-checked',
+            timestamp: new Date().toISOString(),
+            result: result.state === 'invalid' ? 'warning' : 'success',
+            message: result.message,
+          }),
+        );
+      })
+      .catch(() => undefined);
+  }, [bridge, loaded, state.activity, state.preferences]);
 
   const recentActivity = useMemo(() => state.activity.slice(0, 5), [state.activity]);
 
@@ -381,6 +437,15 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
             onScan={projectScanned}
             onActivity={record}
             onCatalogChange={setPluginCatalog}
+          />
+        );
+      case 'security':
+        return (
+          <SecurityPage
+            bridge={bridge}
+            preferences={state.preferences}
+            onActivity={record}
+            lastUpdateCheck={state.activity.find(({ type }) => type === 'update-checked')}
           />
         );
       case 'tools':

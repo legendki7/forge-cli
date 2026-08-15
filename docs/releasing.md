@@ -20,6 +20,9 @@ workflow publishes automatically. The first public release must use the npm dist
 - [ ] `pnpm release:smoke` passes outside the monorepo
 - [ ] `pnpm release:verify` completes with a ready status
 - [ ] The packed `@forgecli7/plugin-sdk` public import and plugin CLI help smoke checks pass
+- [ ] The packed `@forgecli7/marketplace` import and signed protocol/package tests pass
+- [ ] No production Marketplace/update endpoint or private signing key is present
+- [ ] Test private keys exist only in the documented Marketplace fixture path
 - [ ] Local install/list/inspect/remove and a plugin-backed generation/scan smoke pass offline
 - [ ] Stack compatibility, generation-plan, CLI stack, scanner, and Desktop Stack Builder tests pass
 - [ ] Environment validation, deployment compatibility/generation, CLI, Desktop, export, and drift tests pass

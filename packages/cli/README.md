@@ -1,5 +1,11 @@
 # @forgecli7/cli
 
+ForgeKi CLI provides deterministic project, stack, workspace, deployment, and restricted plugin
+workflows. It also provides trusted Marketplace status/refresh/search/show, explicit verified remote
+plugin install/update commands, deterministic package verification, and an informational signed
+update check. Production Marketplace and update providers are currently unconfigured; arbitrary
+package URLs and self-update are intentionally unsupported.
+
 The publishable command-line package for ForgeKi. The public package name must be confirmed before
 the first beta release; the executable command remains `forge`.
 

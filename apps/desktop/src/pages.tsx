@@ -1037,6 +1037,16 @@ export function SettingsPage({
         <section className="panel">
           <h2>Plugin platform</h2>
           <OptionRow
+            label="Remote Marketplace"
+            checked={preferences.remoteMarketplaceEnabled}
+            onChange={(value) => update('remoteMarketplaceEnabled', value)}
+          />
+          <OptionRow
+            label="Check Marketplace automatically"
+            checked={preferences.automaticallyCheckMarketplace}
+            onChange={(value) => update('automaticallyCheckMarketplace', value)}
+          />
+          <OptionRow
             label="Allow local community plugins"
             checked={preferences.allowLocalCommunityPlugins}
             onChange={(value) => update('allowLocalCommunityPlugins', value)}
@@ -1049,6 +1059,30 @@ export function SettingsPage({
           <small>
             There is no unsafe mode. Validation, integrity checks, and restricted permissions cannot
             be disabled.
+          </small>
+        </section>
+        <section className="panel">
+          <h2>Secure updates</h2>
+          <label className="field">
+            <span>Application update channel</span>
+            <select
+              aria-label="Application update channel"
+              value={preferences.updateChannel}
+              onChange={(event) =>
+                update('updateChannel', event.target.value as DesktopPreferences['updateChannel'])
+              }
+            >
+              <option value="stable">Stable</option>
+              <option value="beta">Beta</option>
+            </select>
+          </label>
+          <OptionRow
+            label="Automatically check for updates"
+            checked={preferences.automaticallyCheckUpdates}
+            onChange={(value) => update('automaticallyCheckUpdates', value)}
+          />
+          <small>
+            Checks are limited to trusted configured providers. Installation is never silent.
           </small>
         </section>
         <section className="panel">
@@ -1189,6 +1223,10 @@ function activityLabel(type: ActivityType) {
       'plugin-integrity-failure': 'Plugin disabled after integrity failure',
       'plugin-used': 'Plugin used in generation',
       'plugin-development-created': 'Plugin development project created',
+      'marketplace-refreshed': 'Marketplace refreshed',
+      'remote-plugin-updated': 'Remote plugin updated',
+      'plugin-revoked': 'Plugin revoked',
+      'update-checked': 'Application update checked',
       'workspace-configured': 'Workspace configured',
       'workspace-generated': 'Workspace generated',
       'workspace-scanned': 'Workspace scanned',

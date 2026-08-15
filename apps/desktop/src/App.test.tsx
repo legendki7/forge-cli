@@ -68,6 +68,7 @@ describe('desktop application shell', () => {
     ['Templates', 'Templates'],
     ['Scan Project', 'Scan Project'],
     ['Marketplace', 'Marketplace'],
+    ['Security', 'Security'],
     ['Developer Tools', 'Developer Tools'],
     ['Activity', 'Activity'],
     ['Settings', 'Settings'],

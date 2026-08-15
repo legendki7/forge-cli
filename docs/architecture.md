@@ -19,6 +19,9 @@ narrow typed Rust commands and never exposes a general shell or filesystem API t
   filesystem APIs but has no terminal, prompt, or third-party runtime dependencies.
 - **`@forgecli7/plugin-sdk`** owns the closed declarative Manifest v1 schema, types, validators,
   deterministic renderer, permissions, safety report, and size/path limits. It executes no plugins.
+- **`@forgecli7/marketplace`** owns signed protocol schemas, Ed25519 verification, deterministic
+  declarative package inspection, quarantine, revocation, offline cache, constrained networking,
+  remote update orchestration, and signed application-update metadata. It executes no plugins.
 - **`@forgecli7/templates`** owns the strongly typed built-in template catalog and deterministic
   renderers. It has no React or Tauri dependency.
 - **`@forgecli7/plugins`** owns the plugin registry and built-in plugin loader. Duplicate identifiers
@@ -157,7 +160,7 @@ cluster access, cloud authentication, infrastructure creation, and secret storag
 ForgeKi Desktop supports five Next.js TypeScript App Router presentations over the same safe
 scaffolder. It is not an alternative project engine: it is a graphical adapter over the same
 `createProject()` operation, detection rules, and plugin order used by ForgeKi CLI. Community plugin
-download, arbitrary package execution, dependency installation, deployment, accounts, automatic
+arbitrary package execution, dependency installation, deployment, accounts, silent application
 updates, and AI generation remain out of scope.
 
 ## Publishing model
@@ -172,10 +175,21 @@ workspace protocol remains.
 The initial intended CLI name is `@forgecli7/cli`. It is controlled by
 `packages/cli/package.json`; npm scope ownership and package availability require a manual check
 before release. A different available scoped name may be selected there without changing the `forge`
-binary mapping. All seven public packages must be versioned and published together through Changesets.
+binary mapping. All ten public packages must be versioned and published together through Changesets.
 
 The CLI reads its version and supported Node.js range from its installed `package.json`. The compiled
 entry point therefore requires package metadata, the generated JavaScript and declaration files,
 and its workspace runtime dependencies, but never resolves monorepo-relative paths. Packaging uses
 an explicit `files` allowlist, and the release scripts validate tarball contents and the shebang
 before performing an isolated packed-install smoke test.
+
+## Marketplace and update trust boundary
+
+React cannot fetch Marketplace or update URLs. Typed IPC operations reach the one-shot worker, which
+selects a configured provider and applies centralized HTTPS allowlisting, redirect, DNS/private-IP,
+timeout, content-type, and size policies. Root signatures authorize metadata; publisher signatures
+authenticate package digests. The existing plugin SDK then enforces declarative permissions before
+the plugin store atomically replaces a version. Revoked/corrupted plugins are excluded from generation.
+
+Production Marketplace and update providers are intentionally unconfigured. Local test transports
+use isolated test keys and require no internet. Community plugins receive no networking capability.

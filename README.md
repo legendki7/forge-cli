@@ -42,7 +42,8 @@ and production readiness or cross-platform support is not yet claimed.
 - Offline Visual Stack Builder with shared compatibility rules, architecture review, and file preview
 - Deterministic React/Vite and Express generation with optional Tailwind, database, ORM, and tests
 - Declarative Plugin SDK with closed permissions, local integrity checks, and no code execution
-- Offline Marketplace with Built-in, Bundled, and Local providers
+- Offline-first Marketplace with Built-in, Bundled, Local, and optional signed Remote providers
+- Ed25519 publisher authenticity, SHA-256 package integrity, revocation, quarantine, and safe updates
 - Visual multi-service Workspace Builder with typed services, connections, and deterministic ports
 - Atomic monorepo generation with optional Docker Compose and workspace-aware CI
 - Local/Staging/Production environment schemas with strict secret/browser boundaries
@@ -100,31 +101,39 @@ Existing files are always preserved, so the command is safe to run repeatedly.
 
 ## Commands
 
-| Command                    | Responsibility                                                 |
-| -------------------------- | -------------------------------------------------------------- |
-| `forge create [name]`      | Scaffold a trusted framework, preset, or explicit stack        |
-| `forge stacks list`        | List deterministic built-in stack presets                      |
-| `forge stacks show <id>`   | Inspect a built-in preset and its resolved components          |
-| `forge add docker`         | Add non-destructive Docker configuration                       |
-| `forge add github-actions` | Add non-destructive, script-aware GitHub Actions CI            |
-| `forge add`                | List the currently available plugins                           |
-| `forge check`              | Report project framework, language, package manager, and files |
-| `forge plugins list`       | List built-in, bundled, and locally installed plugin metadata  |
-| `forge plugins inspect ID` | Show a plugin manifest, permissions, integrity, and safety     |
-| `forge plugins validate P` | Validate a local declarative plugin without installing it      |
-| `forge plugins install P`  | Copy a validated local plugin into ForgeKi application data    |
-| `forge plugins remove ID`  | Remove a local plugin registration, preserving project files   |
-| `forge plugin create NAME` | Generate an offline declarative plugin starter                 |
-| `forge workspaces presets` | List trusted multi-service workspace presets                   |
-| `forge workspaces show ID` | Inspect a workspace preset                                     |
-| `forge workspace create`   | Atomically generate a validated local monorepo                 |
-| `forge workspace check P`  | Scan a workspace read-only with explicit evidence              |
-| `forge workspace validate` | Validate a closed workspace JSON configuration                 |
-| `forge environments list`  | List Local, Staging, and Production schema profiles            |
-| `forge deployment targets` | List or filter file-generation targets                         |
-| `forge deployment check`   | Assess readiness without changing files                        |
-| `forge deployment plan`    | Preview the exact deterministic deployment plan                |
-| `forge deployment export`  | Confirm and export configuration without overwriting           |
+| Command                                 | Responsibility                                                 |
+| --------------------------------------- | -------------------------------------------------------------- |
+| `forge create [name]`                   | Scaffold a trusted framework, preset, or explicit stack        |
+| `forge stacks list`                     | List deterministic built-in stack presets                      |
+| `forge stacks show <id>`                | Inspect a built-in preset and its resolved components          |
+| `forge add docker`                      | Add non-destructive Docker configuration                       |
+| `forge add github-actions`              | Add non-destructive, script-aware GitHub Actions CI            |
+| `forge add`                             | List the currently available plugins                           |
+| `forge check`                           | Report project framework, language, package manager, and files |
+| `forge plugins list`                    | List built-in, bundled, and locally installed plugin metadata  |
+| `forge plugins inspect ID`              | Show a plugin manifest, permissions, integrity, and safety     |
+| `forge plugins validate P`              | Validate a local declarative plugin without installing it      |
+| `forge plugins install P`               | Copy a validated local plugin into ForgeKi application data    |
+| `forge plugins remove ID`               | Remove a local plugin registration, preserving project files   |
+| `forge plugin create NAME`              | Generate an offline declarative plugin starter                 |
+| `forge marketplace status`              | Show provider, cache, root-trust, and revocation state         |
+| `forge marketplace refresh`             | Refresh and verify signed Marketplace metadata                 |
+| `forge marketplace search`              | Search the locally verified Marketplace index                  |
+| `forge marketplace show ID`             | Inspect signed publisher and package metadata                  |
+| `forge plugins install-remote ID --yes` | Install a verified declarative package                         |
+| `forge plugins updates`                 | List explicit remote plugin updates                            |
+| `forge plugins update ID --yes`         | Verify and explicitly update a remote plugin                   |
+| `forge update check`                    | Check trusted CLI release metadata without self-updating       |
+| `forge workspaces presets`              | List trusted multi-service workspace presets                   |
+| `forge workspaces show ID`              | Inspect a workspace preset                                     |
+| `forge workspace create`                | Atomically generate a validated local monorepo                 |
+| `forge workspace check P`               | Scan a workspace read-only with explicit evidence              |
+| `forge workspace validate`              | Validate a closed workspace JSON configuration                 |
+| `forge environments list`               | List Local, Staging, and Production schema profiles            |
+| `forge deployment targets`              | List or filter file-generation targets                         |
+| `forge deployment check`                | Assess readiness without changing files                        |
+| `forge deployment plan`                 | Preview the exact deterministic deployment plan                |
+| `forge deployment export`               | Confirm and export configuration without overwriting           |
 
 ## Repository layout
 
@@ -139,6 +148,7 @@ forge-cli/
 |   |-- templates/              # Template registry boundary
 |   |-- workspaces/             # Shared multi-service model, generator, and scanner
 |   |-- deployments/            # Environment, readiness, deployment plans, export, and drift
+|   |-- marketplace/            # Signed catalog, packages, cache, revocation, and updates
 |   `-- plugins/                # Plugin registry and loading
 |       `-- plugin-docker/      # Built-in Docker plugin
 |       `-- plugin-github-actions/ # Built-in GitHub Actions plugin
@@ -164,8 +174,8 @@ compatible file-generation targets, readiness, Docker/Kubernetes output, export,
 ## ForgeKi Desktop
 
 ForgeKi Desktop opens on a persistent local application shell with Home, Create Project, Templates,
-Stack Builder, Workspace Builder, Environments, Deployment, Scan Project, Marketplace, Developer Tools,
-Activity, and Settings pages. Its creation wizard
+Stack Builder, Workspace Builder, Environments, Deployment, Scan Project, Marketplace, Security,
+Developer Tools, Activity, and Settings pages. Its creation wizard
 uses the same project-name validation, scaffolder, detection engine, and trusted built-in plugins as
 the CLI. It never installs project dependencies.
 
@@ -210,11 +220,24 @@ Plugins should use exclusive file creation and preserve user-owned files.
 Those executable hooks are reserved for trusted built-ins. Community plugins use declarative
 `forgeki.plugin.json` manifests and may contribute only allowlisted files, registry dependency
 metadata, safe package scripts, environment schemas, Stack Builder components, templates, and bounded
-scanner rules. ForgeKi never imports plugin JavaScript, runs plugin hooks, downloads marketplace
-content, installs dependencies, or permits deployment logic. Local installs are validated, copied to
+scanner rules. ForgeKi never imports plugin JavaScript, runs community plugin hooks, installs
+dependencies, or permits deployment logic. Local and remote installs are validated, copied to
 application data, hashed with SHA-256, revalidated at use, and disabled after corruption.
 
-The desktop Marketplace is an offline preview with Built-in, Bundled, Local, and Developer views.
+## Trusted Marketplace and secure updates
+
+ForgeKi can discover and install cryptographically verified declarative plugins from a trusted
+Marketplace provider when one is configured. Community plugins remain restricted and cannot execute
+arbitrary code, run shell commands, or access ForgeKi network APIs. Search is local, and ForgeKi sends
+no project, source, path, environment, secret, identity, or telemetry data to a provider.
+
+No production Marketplace or application-update endpoint and no production signing keys are
+configured today. Offline Built-in, Bundled, Local, Developer, and verified-cache behavior continues
+normally. Stable/Beta update checks stop at verified pre-install state, never silently install, and
+the CLI never self-updates. Current Windows artifacts are not Authenticode signed. See the
+[Marketplace overview](docs/marketplace/overview.md) and [secure updates](docs/updates/overview.md).
+
+The desktop Marketplace has Installed, Built-in, Community, and Developer views plus a Security page.
 See [Plugin platform](docs/plugins/overview.md), [Manifest v1](docs/plugins/manifest.md), and
 [security model](docs/plugins/security.md). A complete safe example is in
 [`examples/plugins/editorconfig`](examples/plugins/editorconfig).
@@ -295,13 +318,13 @@ a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) and
 
 ## Roadmap
 
-- Remote plugin discovery, downloads, publisher verification, and publishing
+- Production Marketplace/update hosting, publisher onboarding, and public signed releases
 - Visual stack builder
 - Additional frameworks
 - macOS native validation
 - Linux native validation
 - Signed Windows installers
-- Automatic updates
+- Production Tauri updater integration with explicit user confirmation
 
 ### Beta feedback
 

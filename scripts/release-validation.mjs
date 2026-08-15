@@ -11,6 +11,7 @@ export const publishablePackages = [
   'packages/templates',
   'packages/workspaces',
   'packages/deployments',
+  'packages/marketplace',
   'packages/plugins',
   'packages/cli',
 ];

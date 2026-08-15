@@ -42,6 +42,10 @@ export const defaultPreferences: DesktopPreferences = {
   defaultKubernetesReplicas: 2,
   includeDeploymentMetadata: true,
   showAdvancedDeploymentOptions: false,
+  remoteMarketplaceEnabled: true,
+  automaticallyCheckMarketplace: true,
+  automaticallyCheckUpdates: true,
+  updateChannel: 'beta',
 };
 
 export function createDefaultDesktopState(): PersistedDesktopState {
@@ -113,6 +117,10 @@ export function migrateDesktopState(value: unknown): PersistedDesktopState {
       defaultKubernetesReplicas: boundedInteger(preferences.defaultKubernetesReplicas, 2, 1, 20),
       includeDeploymentMetadata: boolean(preferences.includeDeploymentMetadata, true),
       showAdvancedDeploymentOptions: boolean(preferences.showAdvancedDeploymentOptions, false),
+      remoteMarketplaceEnabled: boolean(preferences.remoteMarketplaceEnabled, true),
+      automaticallyCheckMarketplace: boolean(preferences.automaticallyCheckMarketplace, true),
+      automaticallyCheckUpdates: boolean(preferences.automaticallyCheckUpdates, true),
+      updateChannel: oneOf(preferences.updateChannel, ['stable', 'beta'], 'beta'),
     },
     recentProjects: recent.map(readRecentProject).filter(isPresent).slice(0, MAX_RECENT_PROJECTS),
     activity: activity.map(readActivity).filter(isPresent).slice(0, MAX_ACTIVITY_ENTRIES),
@@ -280,6 +288,10 @@ function readActivity(value: unknown): ActivityEntry | undefined {
         'plugin-integrity-failure',
         'plugin-used',
         'plugin-development-created',
+        'marketplace-refreshed',
+        'remote-plugin-updated',
+        'plugin-revoked',
+        'update-checked',
         'workspace-configured',
         'workspace-generated',
         'workspace-scanned',

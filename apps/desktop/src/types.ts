@@ -26,6 +26,14 @@ import type {
   DeploymentTargetId,
   EnvironmentProfileId,
 } from '@forgecli7/deployments';
+import type {
+  ApplicationUpdateCheck,
+  MarketplaceSearchOptions,
+  MarketplaceStatus,
+  PluginInstallReview,
+  RemotePluginView,
+  UpdateChannel,
+} from '@forgecli7/marketplace/browser';
 
 export type PackageManager = SupportedPackageManager;
 export type NavigationPage =
@@ -38,6 +46,7 @@ export type NavigationPage =
   | 'deployment'
   | 'scan'
   | 'plugins'
+  | 'security'
   | 'tools'
   | 'activity'
   | 'settings';
@@ -67,6 +76,10 @@ export interface DesktopPreferences {
   defaultKubernetesReplicas: number;
   includeDeploymentMetadata: boolean;
   showAdvancedDeploymentOptions: boolean;
+  remoteMarketplaceEnabled: boolean;
+  automaticallyCheckMarketplace: boolean;
+  automaticallyCheckUpdates: boolean;
+  updateChannel: UpdateChannel;
 }
 
 export type ActivityType =
@@ -89,6 +102,10 @@ export type ActivityType =
   | 'plugin-integrity-failure'
   | 'plugin-used'
   | 'plugin-development-created'
+  | 'marketplace-refreshed'
+  | 'remote-plugin-updated'
+  | 'plugin-revoked'
+  | 'update-checked'
   | 'workspace-configured'
   | 'workspace-generated'
   | 'workspace-scanned'
@@ -293,6 +310,20 @@ export interface DesktopBridge {
     plan: DeploymentProfile,
     options?: DeploymentPlanOptions,
   ): Promise<{ destination: string; createdFiles: string[]; fingerprint: string }>;
+  marketplaceStatus?(): Promise<MarketplaceStatus>;
+  refreshMarketplace?(): Promise<{ pluginCount: number; verifiedAt: string }>;
+  clearMarketplaceCache?(): Promise<void>;
+  searchMarketplace?(options?: MarketplaceSearchOptions): Promise<RemotePluginView[]>;
+  showMarketplacePlugin?(id: string): Promise<RemotePluginView>;
+  reviewRemotePlugin?(id: string): Promise<PluginInstallReview>;
+  installRemotePlugin?(id: string, confirmed: boolean): Promise<PluginCatalogEntry>;
+  listRemotePluginUpdates?(): Promise<RemotePluginView[]>;
+  updateRemotePlugin?(
+    id: string,
+    confirmed: boolean,
+    confirmPermissions?: boolean,
+  ): Promise<PluginCatalogEntry>;
+  checkApplicationUpdate?(channel: UpdateChannel): Promise<ApplicationUpdateCheck>;
 }
 
 export interface StackPlanRequest {

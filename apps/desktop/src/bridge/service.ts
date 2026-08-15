@@ -53,6 +53,15 @@ import {
   type DeploymentPlanOptions,
   type DeploymentProfile,
 } from '@forgecli7/deployments';
+import {
+  ApplicationUpdateService,
+  MarketplaceCache,
+  MarketplaceService,
+  RemoteMarketplaceCatalogProvider,
+  UnconfiguredMarketplaceProvider,
+  UnconfiguredUpdateProvider,
+  defaultMarketplaceCacheRoot,
+} from '@forgecli7/marketplace';
 
 export interface WorkerEnvelope {
   operationId: string;
@@ -74,7 +83,17 @@ export interface WorkerEnvelope {
     | 'scan-workspace'
     | 'scan-deployment'
     | 'plan-deployment'
-    | 'export-deployment';
+    | 'export-deployment'
+    | 'marketplace-status'
+    | 'marketplace-refresh'
+    | 'marketplace-cache-clear'
+    | 'marketplace-search'
+    | 'marketplace-show'
+    | 'marketplace-review-install'
+    | 'plugin-install-remote'
+    | 'plugin-updates'
+    | 'plugin-update-remote'
+    | 'application-update-check';
   request: unknown;
 }
 
@@ -83,6 +102,8 @@ export type WorkerMessage =
   | { type: 'result'; payload: DesktopCreateResult }
   | { type: 'operation-result'; payload: unknown }
   | { type: 'error'; payload: { code: string; message: string; details?: string } };
+
+let quarantineStartupCleanup: Promise<void> | undefined;
 
 const requestKeys = new Set([
   'projectName',
@@ -101,6 +122,10 @@ export async function handleWorkerEnvelope(
   envelope: WorkerEnvelope,
   send: (message: WorkerMessage) => void,
 ): Promise<void> {
+  quarantineStartupCleanup ??= marketplaceService()
+    .cleanupQuarantine()
+    .catch(() => undefined);
+  await quarantineStartupCleanup;
   const operation = envelope.operation ?? 'create';
   if (operation !== 'create') {
     await handleOperation(operation, envelope.request, send);
@@ -387,7 +412,39 @@ async function handleOperation(
         new BuiltInCatalogProvider(),
         new BundledCommunityCatalogProvider(store),
         new LocalInstalledCatalogProvider(store),
+        new RemoteMarketplaceCatalogProvider(marketplaceService(store)),
       ]);
+    } else if (operation === 'marketplace-status') {
+      if (!isEmptyRecord(request)) invalidPayload();
+      result = await marketplaceService().status();
+    } else if (operation === 'marketplace-refresh') {
+      if (!isEmptyRecord(request)) invalidPayload();
+      const snapshot = await marketplaceService().refresh();
+      result = { pluginCount: snapshot.index.plugins.length, verifiedAt: snapshot.verifiedAt };
+    } else if (operation === 'marketplace-cache-clear') {
+      if (!isEmptyRecord(request)) invalidPayload();
+      await marketplaceService().cache.clear();
+      result = { cleared: true };
+    } else if (operation === 'marketplace-search') {
+      result = await marketplaceService().search(readMarketplaceSearch(request));
+    } else if (operation === 'marketplace-show') {
+      result = await marketplaceService().show(readPluginIdRequest(request));
+    } else if (operation === 'marketplace-review-install') {
+      result = await marketplaceService().prepareInstall(readPluginIdRequest(request));
+    } else if (operation === 'plugin-install-remote') {
+      const input = readRemotePluginMutation(request);
+      result = catalogInstalled(await marketplaceService().install(input.id, input.confirmed));
+    } else if (operation === 'plugin-updates') {
+      if (!isEmptyRecord(request)) invalidPayload();
+      result = await marketplaceService().updates();
+    } else if (operation === 'plugin-update-remote') {
+      const input = readRemotePluginMutation(request);
+      result = catalogInstalled(
+        await marketplaceService().update(input.id, input.confirmed, input.confirmPermissions),
+      );
+    } else if (operation === 'application-update-check') {
+      const input = readUpdateRequest(request);
+      result = await applicationUpdateService().check(input.currentVersion, input.channel);
     } else if (operation === 'plugin-validate') {
       result = await new PluginStore().validate(readPluginDirectoryRequest(request));
     } else if (operation === 'plugin-install') {
@@ -412,6 +469,85 @@ async function handleOperation(
   } catch (error) {
     send({ type: 'error', payload: publicError(error) });
   }
+}
+
+function marketplaceService(store = new PluginStore()): MarketplaceService {
+  return new MarketplaceService(
+    new UnconfiguredMarketplaceProvider(),
+    [],
+    new MarketplaceCache(defaultMarketplaceCacheRoot()),
+    store,
+  );
+}
+
+function applicationUpdateService(): ApplicationUpdateService {
+  return new ApplicationUpdateService(new UnconfiguredUpdateProvider(), []);
+}
+
+function readMarketplaceSearch(value: unknown) {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some(
+      (key) =>
+        ![
+          'text',
+          'category',
+          'framework',
+          'publisher',
+          'installed',
+          'compatible',
+          'verifiedPublisher',
+        ].includes(key),
+    )
+  )
+    invalidPayload();
+  const result: Record<string, string | boolean> = {};
+  for (const key of ['text', 'category', 'framework', 'publisher'] as const) {
+    if (value[key] !== undefined) {
+      if (typeof value[key] !== 'string' || value[key].length > 200) invalidPayload();
+      result[key] = value[key];
+    }
+  }
+  for (const key of ['installed', 'compatible', 'verifiedPublisher'] as const) {
+    if (value[key] !== undefined) {
+      if (typeof value[key] !== 'boolean') invalidPayload();
+      result[key] = value[key];
+    }
+  }
+  return result;
+}
+
+function readRemotePluginMutation(value: unknown): {
+  id: string;
+  confirmed: boolean;
+  confirmPermissions: boolean;
+} {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some(
+      (key) => !['pluginId', 'confirmed', 'confirmPermissions'].includes(key),
+    ) ||
+    typeof value.confirmed !== 'boolean' ||
+    (value.confirmPermissions !== undefined && typeof value.confirmPermissions !== 'boolean')
+  )
+    invalidPayload();
+  return {
+    id: readPluginIdRequest({ pluginId: value.pluginId }),
+    confirmed: value.confirmed,
+    confirmPermissions: value.confirmPermissions === true,
+  };
+}
+
+function readUpdateRequest(value: unknown): { channel: 'stable' | 'beta'; currentVersion: string } {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some((key) => !['channel', 'currentVersion'].includes(key)) ||
+    !['stable', 'beta'].includes(String(value.channel)) ||
+    typeof value.currentVersion !== 'string' ||
+    value.currentVersion.length > 100
+  )
+    invalidPayload();
+  return { channel: value.channel as 'stable' | 'beta', currentVersion: value.currentVersion };
 }
 
 function readDeploymentRequest(

@@ -25,8 +25,8 @@ import {
   type PluginScannerEvidence,
 } from '@forgecli7/plugin-sdk';
 
-export type PluginSourceType = 'built-in' | 'local' | 'bundled-curated';
-export type PluginIntegrityState = 'valid' | 'corrupted' | 'not-installed';
+export type PluginSourceType = 'built-in' | 'local' | 'bundled-curated' | 'remote';
+export type PluginIntegrityState = 'valid' | 'corrupted' | 'not-installed' | 'revoked';
 
 export interface PluginIntegrityMetadata {
   schemaVersion: 1;
@@ -36,6 +36,10 @@ export interface PluginIntegrityMetadata {
   installedAt: string;
   manifestHash: string;
   fileHashes: Record<string, string>;
+  publisherId?: string;
+  packageSha256?: string;
+  signatureStatus?: 'verified';
+  disabledReason?: string;
 }
 
 export interface InstalledPlugin {
@@ -64,6 +68,12 @@ export interface PluginCatalogEntry {
   installedAt?: string;
   manifest?: ForgeKiPluginManifest;
   warning?: string;
+  publisherStatus?: 'forgeki' | 'verified' | 'community' | 'revoked';
+  signatureStatus?: 'verified' | 'invalid' | 'unavailable';
+  updateAvailable?: boolean;
+  compatible?: boolean;
+  packageSha256?: string;
+  permissionExpansion?: readonly string[];
 }
 
 export interface PluginCatalogProvider {
@@ -462,7 +472,13 @@ export class PluginStore {
 
   async install(
     sourceDirectory: string,
-    options: { sourceType?: Exclude<PluginSourceType, 'built-in'>; installedAt?: string } = {},
+    options: {
+      sourceType?: Exclude<PluginSourceType, 'built-in'>;
+      installedAt?: string;
+      publisherId?: string;
+      packageSha256?: string;
+      signatureStatus?: 'verified';
+    } = {},
   ): Promise<InstalledPlugin> {
     const inspected = await this.validate(sourceDirectory);
     if (!inspected.manifest || inspected.report.result === 'blocked') {
@@ -497,6 +513,9 @@ export class PluginStore {
         installedAt: options.installedAt ?? new Date().toISOString(),
         manifestHash: hashText(serialized),
         fileHashes,
+        ...(options.publisherId ? { publisherId: options.publisherId } : {}),
+        ...(options.packageSha256 ? { packageSha256: options.packageSha256 } : {}),
+        ...(options.signatureStatus ? { signatureStatus: options.signatureStatus } : {}),
       };
       await writeFile(
         path.join(stage, 'metadata.json'),
@@ -567,7 +586,7 @@ export class PluginStore {
   > {
     const sources = [];
     for (const plugin of await this.list()) {
-      if (plugin.integrity !== 'valid') continue;
+      if (plugin.integrity !== 'valid' || plugin.metadata.disabledReason) continue;
       const files: Record<string, string> = {};
       for (const relative of Object.keys(plugin.metadata.fileHashes).sort()) {
         files[relative] = await readFile(path.join(plugin.directory, 'files', relative), 'utf8');
@@ -609,9 +628,10 @@ export class PluginStore {
         metadata,
         directory,
         integrity: integrityErrors.length ? 'corrupted' : 'valid',
-        ...(integrityErrors.length
+        ...(integrityErrors.length || metadata.disabledReason
           ? {
               disabledReason:
+                metadata.disabledReason ??
                 'Plugin disabled because its installed files changed unexpectedly. Remove and reinstall it.',
             }
           : {}),
@@ -644,6 +664,20 @@ export class PluginStore {
       throw new PluginStorageError('INVALID_MANIFEST', 'Invalid plugin id.');
     }
     await rm(path.join(this.root, id), { recursive: true, force: true });
+  }
+
+  async disable(id: string, reason: string): Promise<void> {
+    const plugin = await this.inspect(id);
+    if (!plugin || plugin.metadata.sourceType !== 'remote')
+      throw new PluginStorageError(
+        'PLUGIN_DISABLED',
+        'Only installed remote plugins can be revoked.',
+      );
+    const metadata = { ...plugin.metadata, disabledReason: reason.slice(0, 300) };
+    const target = path.join(plugin.directory, 'metadata.json');
+    const temporary = path.join(plugin.directory, `.metadata-${randomUUID()}.tmp`);
+    await writeFile(temporary, `${JSON.stringify(metadata, null, 2)}\n`, { flag: 'wx' });
+    await rename(temporary, target);
   }
 }
 
@@ -680,7 +714,7 @@ export class LocalInstalledCatalogProvider implements PluginCatalogProvider {
     return (await this.store.list()).map((plugin) =>
       catalogFromManifest(
         plugin.manifest,
-        plugin.metadata.sourceType === 'bundled-curated' ? 'bundled-curated' : 'local',
+        plugin.metadata.sourceType === 'built-in' ? 'local' : plugin.metadata.sourceType,
         plugin,
       ),
     );
@@ -778,7 +812,7 @@ export async function evaluatePluginScannerRules(
     scripts: Record<string, string>;
   },
 ): Promise<Array<{ pluginId: string; componentId: string; evidence: string[] }>> {
-  if (plugin.integrity !== 'valid') return [];
+  if (plugin.integrity !== 'valid' || plugin.metadata.disabledReason) return [];
   const results = [];
   for (const rule of plugin.manifest.contributions.scannerRules ?? []) {
     const evidence: string[] = [];
@@ -850,8 +884,17 @@ function catalogFromManifest(
     trusted: false,
     declarative: true,
     installed: Boolean(installed),
-    integrity: installed?.integrity ?? 'not-installed',
+    integrity: installed?.metadata.disabledReason
+      ? 'revoked'
+      : (installed?.integrity ?? 'not-installed'),
     ...(installed ? { installedAt: installed.metadata.installedAt } : {}),
+    ...(installed?.metadata.publisherId ? { publisherStatus: 'community' as const } : {}),
+    ...(installed?.metadata.signatureStatus
+      ? { signatureStatus: installed.metadata.signatureStatus }
+      : {}),
+    ...(installed?.metadata.packageSha256
+      ? { packageSha256: installed.metadata.packageSha256 }
+      : {}),
     manifest,
     ...(installed?.disabledReason ? { warning: installed.disabledReason } : {}),
   };

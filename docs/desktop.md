@@ -1,6 +1,7 @@
 # ForgeKi Desktop
 
-Phase 5 adds Environments and Deployment pages. They use `@forgecli7/deployments` through the fixed
+Phase 6 adds trusted remote Marketplace, Security Center, and signed update-checking foundations.
+Environments and Deployment continue using `@forgecli7/deployments` through the fixed
 worker boundary for schema matrices, compatible target filtering, readiness, exact previews,
 confirmed export, fingerprints, and drift. ForgeKi generates deployment configuration; it does not
 deploy applications.
@@ -150,8 +151,12 @@ collapse preference.
   counts and expands scripts/files on demand. Recommendations are deterministic rules for Docker,
   GitHub Actions, validation scripts, lockfile ambiguity, and TypeScript presence.
 - **Marketplace** separates Installed, Built-in, Community, and Developer views. It shows permissions,
-  provenance, integrity, and safety details; local or bundled installation requires confirmation.
-  Remote discovery and downloads are unavailable.
+  provenance, integrity, publisher trust, signature status, compatibility, revocation, and explicit
+  plugin updates. Local, bundled, and remote installation require confirmation. Production remote
+  discovery remains unavailable until an owned provider is configured; verified cached metadata and
+  the local test transport exercise the same trust pipeline.
+- **Security** shows root trust, cache/revocation state, installed/revoked remote plugins, Stable/Beta
+  channel state, updater signature status, and the current unsigned Windows status.
 - **Developer Tools** checks Node.js, npm, pnpm, Yarn, Bun, Git, Docker, VS Code, Rust, and Cargo only
   after the page action is used.
 - **Activity** stores at most 200 concise local entries with event/result filters and confirmed
@@ -230,7 +235,10 @@ to the injectable `git init` call already used by the CLI.
 | `scan_project`                              | Exact canonical directory previously selected by the user.                          |
 | `inspect_builtin_plugins`                   | Metadata only, or detection for an exact selected project.                          |
 | `apply_builtin_plugin`                      | Docker/GitHub Actions allowlist and exact selected project only.                    |
-| `list_marketplace_plugins`                  | Offline provider composition; no network or install side effect.                    |
+| `list_marketplace_plugins`                  | Offline-first provider composition; no install side effect.                         |
+| Marketplace status/refresh/search/show      | Fixed provider operations; frontend URLs are never accepted.                        |
+| Remote plugin install/update                | Bounded ID and confirmation through signature/quarantine validation.                |
+| Application update check                    | Stable/Beta metadata only; no silent installation.                                  |
 | `validate_community_plugin`                 | Selected local directory; closed manifest and safety report only.                   |
 | `install_community_plugin`                  | Selected source; validated app-data copy plus integrity metadata.                   |
 | `install_bundled_plugin`                    | Curated identifier allowlist; explicit local install only.                          |
@@ -266,10 +274,10 @@ directories, bundles, and installers are ignored by Git.
 
 The Visual Stack Builder supports trusted Next.js, React/Vite, and Express foundations plus installed,
 validated declarative plugin components. There is no dependency installation, deployment,
-security-vulnerability scanner, remote template/plugin fetch, account, automatic update, or community
+security-vulnerability scanner, account, silent update installation, or community
 code-execution path. Planned future work:
 
-- Remote plugin discovery, downloads, publisher verification, and publishing
+- Production Marketplace/update hosting, public publisher onboarding, and signed releases
 - Additional databases
 - Authentication components
 - UI component libraries

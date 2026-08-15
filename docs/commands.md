@@ -119,7 +119,7 @@ first successful creation.
 
 ## `forge plugins` and `forge plugin create`
 
-Community plugin management is local and offline:
+Community plugin management remains local-capable and offline-first:
 
 ```bash
 forge plugins list
@@ -128,11 +128,22 @@ forge plugins validate ./examples/plugins/editorconfig
 forge plugins install ./examples/plugins/editorconfig
 forge plugins remove example.editorconfig
 forge plugin create my-plugin
+forge plugins verify-package ./plugin
+forge plugins package ./plugin --output ./plugin.forgeki-plugin
+forge marketplace status
+forge marketplace refresh
+forge marketplace search zod --framework nextjs
+forge marketplace show community.zod
+forge plugins install-remote community.zod --yes
+forge plugins updates
+forge plugins update community.zod --yes
+forge update check --channel beta
 ```
 
 Validation and inspection print declared permissions and a safety report. Installation accepts a
 local directory only, copies a validated snapshot into ForgeKi application data, records SHA-256
-integrity metadata, and never executes code or downloads packages. Corrupted plugins remain visible
+integrity metadata, and never executes code. Remote IDs resolve only through verified catalog
+metadata; arbitrary URL installation and CLI self-update commands do not exist. Corrupted plugins remain visible
 but disabled. Removal deletes only ForgeKi's installed copy; generated project files remain. See
 [plugin development](plugins/development.md) for the complete workflow.
 

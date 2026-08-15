@@ -47,6 +47,9 @@ importers:
       '@forgecli7/deployments':
         specifier: workspace:*
         version: link:../../packages/deployments
+      '@forgecli7/marketplace':
+        specifier: workspace:*
+        version: link:../../packages/marketplace
       '@forgecli7/plugin-docker':
         specifier: workspace:*
         version: link:../../packages/plugins/plugin-docker
@@ -114,6 +117,9 @@ importers:
       '@forgecli7/deployments':
         specifier: workspace:*
         version: link:../deployments
+      '@forgecli7/marketplace':
+        specifier: workspace:*
+        version: link:../marketplace
       '@forgecli7/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -147,6 +153,15 @@ importers:
       '@forgecli7/workspaces':
         specifier: workspace:*
         version: link:../workspaces
+
+  packages/marketplace:
+    dependencies:
+      '@forgecli7/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      '@forgecli7/plugins':
+        specifier: workspace:*
+        version: link:../plugins
 
   packages/plugin-sdk: {}
 

@@ -61,6 +61,8 @@ export async function validatePackedInstallation(root, archives, dependencies = 
         ['plugin', '--help'],
         ['workspaces', '--help'],
         ['workspace', '--help'],
+        ['marketplace', '--help'],
+        ['update', '--help'],
       ]) {
         const output = invoke(args);
         if (!output.includes('Usage:')) throw new Error(`Packed forge ${args.join(' ')} failed.`);
@@ -154,6 +156,7 @@ async function validatePublicImports(installationDirectory, runner) {
       "import { renderNextjsTemplate } from '@forgecli7/templates';",
       "import { getWorkspacePreset, validateWorkspace } from '@forgecli7/workspaces';",
       "import { createDeploymentPlan, deploymentProjectFromWorkspace } from '@forgecli7/deployments';",
+      "import { canonicalize, MARKETPLACE_SCHEMA_VERSION } from '@forgecli7/marketplace';",
       "import { dockerPlugin } from '@forgecli7/plugin-docker';",
       "import { githubActionsPlugin } from '@forgecli7/plugin-github-actions';",
       "if (!validateProjectName('consumer-app').valid) throw new Error('core export failed');",
@@ -161,6 +164,7 @@ async function validatePublicImports(installationDirectory, runner) {
       "if (renderNextjsTemplate('consumer-app', 'pnpm').length === 0) throw new Error('templates export failed');",
       "if (!validateWorkspace(getWorkspacePreset('saas-foundation').definition).valid) throw new Error('workspaces export failed');",
       "if (createDeploymentPlan(deploymentProjectFromWorkspace(getWorkspacePreset('saas-foundation').definition), 'production', 'kubernetes').files.length === 0) throw new Error('deployments export failed');",
+      'if (MARKETPLACE_SCHEMA_VERSION !== 1 || canonicalize({b:2,a:1}) !== \'{"a":1,"b":2}\') throw new Error(\'marketplace export failed\');',
       "if (dockerPlugin.id !== 'docker') throw new Error('Docker export failed');",
       "if (githubActionsPlugin.id !== 'github-actions') throw new Error('GitHub Actions export failed');",
     ].join('\n'),

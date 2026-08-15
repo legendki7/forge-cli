@@ -10,6 +10,7 @@ export const packageDirectories = [
   'packages/templates',
   'packages/workspaces',
   'packages/deployments',
+  'packages/marketplace',
   'packages/plugins',
   'packages/plugins/plugin-docker',
   'packages/plugins/plugin-github-actions',
@@ -55,7 +56,12 @@ export function walkRepository(root) {
 
 export function classifyOccurrence(relativePath, label) {
   const normalized = relativePath.replaceAll('\\', '/');
-  if (normalized.startsWith('tests/')) return 'test fixture';
+  if (
+    normalized.startsWith('tests/') ||
+    /(?:^|\/)fixtures?\//u.test(normalized) ||
+    /\.test\.[^/]+$/u.test(normalized)
+  )
+    return 'test fixture';
   if (normalized.startsWith('scripts/')) return 'internal development reference';
   if (
     (normalized === 'docs/releasing.md' || normalized === 'docs/release-candidate-report.md') &&
@@ -193,6 +199,25 @@ export function auditPotentialSecrets(root) {
       continue;
     }
     if (patterns.some((pattern) => pattern.test(content))) findings.push(relative);
+  }
+  return findings;
+}
+
+export function auditSigningKeys(root) {
+  const findings = [];
+  const allowedFixture = 'packages/marketplace/src/fixtures/test-keys.ts';
+  const patterns = [/-----BEGIN (?:ENCRYPTED )?PRIVATE KEY-----/u, /TEST_[A-Z_]*PRIVATE_KEY\s*=/u];
+  for (const file of walkRepository(root)) {
+    const relative = path.relative(root, file).replaceAll('\\', '/');
+    let content;
+    try {
+      content = readFileSync(file, 'utf8');
+    } catch {
+      continue;
+    }
+    if (patterns.some((pattern) => pattern.test(content)) && relative !== allowedFixture) {
+      findings.push(relative);
+    }
   }
   return findings;
 }

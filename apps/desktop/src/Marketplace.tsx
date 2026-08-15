@@ -5,6 +5,7 @@ import {
   type PluginSafetyReport,
 } from '@forgecli7/plugin-sdk';
 import type { BuiltinPluginId, PluginCatalogEntry } from '@forgecli7/plugins';
+import type { MarketplaceStatus, PluginInstallReview } from '@forgecli7/marketplace/browser';
 import { PageHeading } from './pages';
 import type { ActivityEntry, DesktopBridge, DesktopPreferences, DesktopProjectScan } from './types';
 
@@ -12,6 +13,8 @@ type Tab = 'installed' | 'built-in' | 'community' | 'developer';
 type Pending =
   | { kind: 'builtin'; id: BuiltinPluginId }
   | { kind: 'install'; id?: string; path?: string }
+  | { kind: 'remote-install'; id: string }
+  | { kind: 'remote-update'; id: string }
   | { kind: 'remove'; id: string };
 
 export function MarketplacePage({
@@ -45,7 +48,10 @@ export function MarketplacePage({
   const [pending, setPending] = useState<Pending>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [marketplaceStatus, setMarketplaceStatus] = useState<MarketplaceStatus>();
+  const [remoteReview, setRemoteReview] = useState<PluginInstallReview>();
   const reportedIntegrityFailures = useRef(new Set<string>());
+  const reportedRevocations = useRef(new Set<string>());
 
   async function refresh() {
     const entries = await bridge.listMarketplacePlugins();
@@ -61,11 +67,49 @@ export function MarketplacePage({
         message: `${plugin.id} was disabled after an integrity failure.`,
       });
     }
+    for (const plugin of entries) {
+      if (plugin.integrity !== 'revoked' || reportedRevocations.current.has(plugin.id)) continue;
+      reportedRevocations.current.add(plugin.id);
+      onActivity({
+        type: 'plugin-revoked',
+        result: 'failed',
+        message: `${plugin.id} was disabled by verified revocation metadata.`,
+      });
+    }
   }
 
   useEffect(() => {
     void refresh().catch(() => setError('The local plugin catalog could not be loaded.'));
+    void bridge
+      .marketplaceStatus?.()
+      .then(setMarketplaceStatus)
+      .catch(() => undefined);
   }, [bridge]);
+
+  async function refreshRemote() {
+    if (!preferences.remoteMarketplaceEnabled) {
+      setError('Remote Marketplace is disabled in Settings.');
+      return;
+    }
+    setBusy(true);
+    setError(undefined);
+    try {
+      if (!bridge.refreshMarketplace || !bridge.marketplaceStatus)
+        throw new Error('Marketplace bridge is unavailable.');
+      await bridge.refreshMarketplace();
+      await refresh();
+      setMarketplaceStatus(await bridge.marketplaceStatus());
+      onActivity({
+        type: 'marketplace-refreshed',
+        result: 'success',
+        message: 'Signed Marketplace metadata verified and cached.',
+      });
+    } catch {
+      setError('Marketplace refresh failed safely. Existing verified cache was preserved.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const visible = useMemo(
     () =>
@@ -167,6 +211,30 @@ export function MarketplacePage({
     if (path) onProjectPath(path);
   }
 
+  async function reviewRemote(
+    plugin: PluginCatalogEntry,
+    kind: 'remote-install' | 'remote-update',
+  ) {
+    setBusy(true);
+    setError(undefined);
+    try {
+      if (!bridge.reviewRemotePlugin) throw new Error('Marketplace review bridge is unavailable.');
+      const review = await bridge.reviewRemotePlugin(plugin.id);
+      setRemoteReview(review);
+      setSelected({
+        ...plugin,
+        manifest: review.manifest,
+        permissionExpansion: review.permissionExpansion,
+      });
+      setSafety(review.safety);
+      setPending({ kind, id: plugin.id });
+    } catch {
+      setError('The verified plugin package could not be reviewed safely.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function perform() {
     if (!pending) return;
     setBusy(true);
@@ -196,6 +264,28 @@ export function MarketplacePage({
           result: 'success',
           message: `Installed ${installed.id} as restricted declarative data.`,
         });
+      } else if (pending.kind === 'remote-install') {
+        if (!bridge.installRemotePlugin) throw new Error('Marketplace bridge is unavailable.');
+        const installed = await bridge.installRemotePlugin(pending.id, true);
+        inspect(installed);
+        onActivity({
+          type: 'plugin-installed',
+          result: 'success',
+          message: `Installed verified remote plugin ${installed.id}.`,
+        });
+      } else if (pending.kind === 'remote-update') {
+        if (!bridge.updateRemotePlugin) throw new Error('Marketplace bridge is unavailable.');
+        const installed = await bridge.updateRemotePlugin(
+          pending.id,
+          true,
+          Boolean(selected?.permissionExpansion?.length),
+        );
+        inspect(installed);
+        onActivity({
+          type: 'remote-plugin-updated',
+          result: 'success',
+          message: `Updated verified remote plugin ${installed.id}.`,
+        });
       } else {
         await bridge.removeCommunityPlugin(pending.id);
         if (selected?.id === pending.id) setSelected(undefined);
@@ -215,6 +305,7 @@ export function MarketplacePage({
       });
     } finally {
       setPending(undefined);
+      setRemoteReview(undefined);
       setBusy(false);
     }
   }
@@ -231,12 +322,23 @@ export function MarketplacePage({
             <button className="primary" disabled={busy} onClick={() => void importLocal()}>
               Import local plugin
             </button>
+            <button
+              disabled={busy || !preferences.remoteMarketplaceEnabled}
+              onClick={() => void refreshRemote()}
+            >
+              Refresh
+            </button>
           </div>
         }
       />
       <p className="notice info">
-        <strong>Community catalog preview.</strong> Remote marketplace downloads are not enabled
-        yet.
+        <strong>
+          {marketplaceStatus?.configured
+            ? 'Trusted Marketplace.'
+            : 'Marketplace provider not configured.'}
+        </strong>{' '}
+        {marketplaceStatus?.message ?? 'Checking verified Marketplace cache.'} Community plugins
+        remain declarative and cannot execute arbitrary code.
       </p>
       {error && (
         <p className="notice error" role="alert">
@@ -325,19 +427,21 @@ export function MarketplacePage({
                         ? 'Built-in · Trusted · Ships with ForgeKi'
                         : plugin.sourceType === 'bundled-curated'
                           ? 'Bundled community example'
-                          : 'Community · Local'}
+                          : plugin.sourceType === 'remote'
+                            ? `${plugin.publisherStatus === 'verified' ? 'Verified Publisher' : plugin.publisherStatus === 'forgeki' ? 'ForgeKi' : plugin.publisherStatus === 'revoked' ? 'Revoked' : 'Community Publisher'} · Signature ${plugin.signatureStatus ?? 'unavailable'}`
+                            : 'Community · Local'}
                     </span>
                     <span
                       className="status-badge"
                       data-result={
-                        plugin.integrity === 'corrupted'
+                        plugin.integrity === 'corrupted' || plugin.integrity === 'revoked'
                           ? 'warning'
                           : plugin.installed
                             ? 'success'
                             : 'neutral'
                       }
                     >
-                      {plugin.integrity === 'corrupted'
+                      {plugin.integrity === 'corrupted' || plugin.integrity === 'revoked'
                         ? 'disabled'
                         : plugin.installed
                           ? 'installed'
@@ -370,13 +474,26 @@ export function MarketplacePage({
                     {!plugin.builtIn && !plugin.installed && (
                       <button
                         onClick={() => {
-                          inspect(plugin);
-                          setPending({ kind: 'install', id: plugin.id });
+                          if (plugin.sourceType === 'remote') {
+                            void reviewRemote(plugin, 'remote-install');
+                          } else {
+                            inspect(plugin);
+                            setPending({ kind: 'install', id: plugin.id });
+                          }
                         }}
                       >
-                        Install locally
+                        {plugin.sourceType === 'remote'
+                          ? 'Install verified plugin'
+                          : 'Install locally'}
                       </button>
                     )}
+                    {plugin.sourceType === 'remote' &&
+                      plugin.installed &&
+                      plugin.updateAvailable && (
+                        <button onClick={() => void reviewRemote(plugin, 'remote-update')}>
+                          Review update
+                        </button>
+                      )}
                     {!plugin.builtIn && plugin.installed && (
                       <button onClick={() => setPending({ kind: 'remove', id: plugin.id })}>
                         Remove
@@ -412,17 +529,73 @@ export function MarketplacePage({
                 ? 'Remove plugin?'
                 : pending.kind === 'builtin'
                   ? 'Apply trusted built-in?'
-                  : 'Install restricted plugin?'}
+                  : pending.kind === 'remote-update'
+                    ? 'Update verified declarative plugin?'
+                    : pending.kind === 'remote-install'
+                      ? 'Install verified declarative plugin?'
+                      : 'Install restricted plugin?'}
             </h2>
             <p>
               {pending.kind === 'remove'
                 ? 'Installed declarative data will be removed. Existing projects remain unchanged.'
                 : pending.kind === 'builtin'
                   ? 'Only declared built-in files will be created; existing files are preserved.'
-                  : 'Only validated declarative data is copied. No plugin code, shell command, or network request runs.'}
+                  : pending.kind === 'remote-install' || pending.kind === 'remote-update'
+                    ? 'Publisher signature, package digest, revocation, compatibility, permissions, and declarative safety are verified before atomic installation. No plugin code runs.'
+                    : 'Only validated declarative data is copied. No plugin code, shell command, or network request runs.'}
             </p>
+            {pending.kind === 'remote-update' && selected?.permissionExpansion?.length ? (
+              <p className="notice warning">
+                <strong>This update requests additional permissions:</strong>{' '}
+                {selected.permissionExpansion.map((permission) => `+ ${permission}`).join(', ')}
+              </p>
+            ) : null}
+            {(pending.kind === 'remote-install' || pending.kind === 'remote-update') &&
+              remoteReview && (
+                <dl className="detail-grid">
+                  <div>
+                    <dt>Publisher</dt>
+                    <dd>
+                      {remoteReview.plugin.publisherName} · {remoteReview.plugin.publisherStatus}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Signature / integrity</dt>
+                    <dd>Verified / verified</dd>
+                  </div>
+                  <div>
+                    <dt>Permissions</dt>
+                    <dd>{remoteReview.manifest.permissions.join(', ') || 'None'}</dd>
+                  </div>
+                  <div>
+                    <dt>Package files</dt>
+                    <dd>{remoteReview.packageFiles.join(', ')}</dd>
+                  </div>
+                  <div>
+                    <dt>Contributions</dt>
+                    <dd>
+                      {remoteReview.safety.generatedFiles} files ·{' '}
+                      {remoteReview.safety.dependencies} dependencies ·{' '}
+                      {remoteReview.safety.scripts} scripts ·{' '}
+                      {remoteReview.safety.environmentVariables} environment variables ·{' '}
+                      {remoteReview.safety.scannerRules} scanner rules
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Compatibility</dt>
+                    <dd>{remoteReview.safety.forgekiCompatible ? 'Compatible' : 'Blocked'}</dd>
+                  </div>
+                </dl>
+              )}
             <div className="button-row">
-              <button onClick={() => setPending(undefined)}>Cancel</button>
+              <button
+                onClick={() => {
+                  setPending(undefined);
+                  setRemoteReview(undefined);
+                }}
+              >
+                Cancel
+              </button>
               <button className="primary" disabled={busy} onClick={() => void perform()}>
                 {busy ? 'Working…' : 'Confirm'}
               </button>
@@ -461,6 +634,14 @@ function PluginDetails({
         <div>
           <dt>Version</dt>
           <dd>{plugin.version}</dd>
+        </div>
+        <div>
+          <dt>Signature</dt>
+          <dd>{plugin.signatureStatus ?? (plugin.builtIn ? 'Ships with ForgeKi' : 'Local')}</dd>
+        </div>
+        <div>
+          <dt>Publisher trust</dt>
+          <dd>{plugin.publisherStatus ?? (plugin.builtIn ? 'ForgeKi' : 'Community')}</dd>
         </div>
         <div>
           <dt>License</dt>

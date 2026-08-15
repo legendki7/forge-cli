@@ -8,10 +8,12 @@ import {
   auditGeneratedArtifacts,
   auditPackageMetadata,
   auditPotentialSecrets,
+  auditSigningKeys,
   inspectChangesets,
   planPrerelease,
   scanRepositoryMarkers,
   withTemporaryDirectory,
+  walkRepository,
 } from './release-audit.mjs';
 import { validatePackedInstallation } from './packed-validation.mjs';
 import { writeReleaseCandidateReport } from './release-report.mjs';
@@ -52,6 +54,18 @@ export async function verifyReleaseCandidate(repositoryRoot = root) {
     const secrets = auditPotentialSecrets(repositoryRoot);
     if (secrets.length > 0)
       throw new Error(`Potential credential material found in: ${secrets.join(', ')}`);
+    const signingKeys = auditSigningKeys(repositoryRoot);
+    if (signingKeys.length > 0)
+      throw new Error(
+        `Private signing-key material found outside approved test fixtures: ${signingKeys.join(', ')}`,
+      );
+    const fabricatedEndpoints = ['marketplace', 'api', 'updates'].map(
+      (service) => `${service}.${'forgeki'}.${'dev'}`,
+    );
+    for (const fabricated of fabricatedEndpoints) {
+      if (scanRepositoryText(repositoryRoot, fabricated).length > 0)
+        throw new Error(`Fabricated production endpoint found: ${fabricated}`);
+    }
 
     step('Formatting, lint, tests, and builds');
     for (const [script] of verificationCommands) runPnpm(repositoryRoot, script);
@@ -100,6 +114,16 @@ export async function verifyReleaseCandidate(repositoryRoot = root) {
 
   if (failure) throw failure;
   return audit;
+}
+
+function scanRepositoryText(repositoryRoot, needle) {
+  return walkRepository(repositoryRoot).filter((file) => {
+    try {
+      return readFileSync(file, 'utf8').includes(needle);
+    } catch {
+      return false;
+    }
+  });
 }
 
 function validateDocumentationIdentity(repositoryRoot) {

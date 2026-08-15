@@ -63,6 +63,51 @@ function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
       .mockResolvedValue({ ...bundled, installed: true, integrity: 'valid' }),
     removeCommunityPlugin: vi.fn().mockResolvedValue(undefined),
     createPluginProject: vi.fn().mockResolvedValue({ directory: 'C:/plugins/my-plugin' }),
+    reviewRemotePlugin: vi.fn().mockResolvedValue({
+      plugin: {
+        id: manifest.id,
+        version: manifest.version,
+        name: manifest.name,
+        description: manifest.description,
+        publisherId: 'test-publisher',
+        publisherKeyId: 'test-key',
+        publisherName: 'Verified Example',
+        publisherStatus: 'verified',
+        signatureStatus: 'verified',
+        packageUrl: 'https://fixtures.invalid/plugin',
+        packageSha256: 'a'.repeat(64),
+        signature: 'fixture',
+        minimumForgeKiVersion: '0.1.0',
+        categories: ['Configuration'],
+        supportedFrameworks: [...manifest.supportedFrameworks],
+        permissions: [...manifest.permissions],
+        packageFiles: ['forgeki.plugin.json'],
+        installed: false,
+        updateAvailable: false,
+        revoked: false,
+        compatible: true,
+      },
+      manifest,
+      safety: {
+        result: 'safe',
+        manifestValid: true,
+        forgekiCompatible: true,
+        permissions: manifest.permissions,
+        generatedFiles: 1,
+        dependencies: 0,
+        scripts: 0,
+        environmentVariables: 0,
+        scannerRules: 1,
+        unsupportedCapabilities: [],
+        suspiciousPaths: [],
+        errors: [],
+        warnings: [],
+      },
+      packageFiles: ['README.md', 'forgeki.plugin.json'],
+      permissionExpansion: [],
+      digestVerified: true,
+      signatureVerified: true,
+    }),
     checkDeveloperTools: vi.fn(),
     loadDesktopState: vi.fn(),
     saveDesktopState: vi.fn(),
@@ -90,7 +135,7 @@ function setup(api = bridge()) {
 describe('restricted plugin Marketplace', () => {
   it('shows tabs, offline banner, search, details, permissions, and safety restrictions', async () => {
     setup();
-    expect(screen.getByText(/Remote marketplace downloads are not enabled yet/u)).toBeVisible();
+    expect(screen.getByText(/Marketplace provider not configured/u)).toBeVisible();
     await userEvent.click(screen.getByRole('tab', { name: 'Community' }));
     await screen.findByRole('heading', { name: 'EditorConfig' });
     await userEvent.type(screen.getByLabelText('Search plugins'), 'editor');
@@ -147,5 +192,69 @@ describe('restricted plugin Marketplace', () => {
     );
     expect(await screen.findByText('disabled')).toBeVisible();
     expect(screen.getByText(/changed unexpectedly/u)).toBeVisible();
+  });
+
+  it('shows verified remote trust and installs only after explicit review', async () => {
+    const remote: PluginCatalogEntry = {
+      ...bundled,
+      sourceType: 'remote',
+      publisher: 'Verified Example',
+      publisherStatus: 'verified',
+      signatureStatus: 'verified',
+      packageSha256: 'a'.repeat(64),
+      manifest: undefined,
+    };
+    const api = bridge({
+      marketplaceStatus: vi.fn().mockResolvedValue({
+        configured: true,
+        connectivity: 'online',
+        freshness: 'fresh',
+        rootTrust: 'verified',
+        revocations: 'fresh',
+        message: 'Verified Marketplace metadata is available.',
+      }),
+      listMarketplacePlugins: vi.fn().mockResolvedValue([remote]),
+      installRemotePlugin: vi.fn().mockResolvedValue({
+        ...remote,
+        installed: true,
+        integrity: 'valid',
+      }),
+    });
+    setup(api);
+    await userEvent.click(screen.getByRole('tab', { name: 'Community' }));
+    expect(await screen.findByText(/Verified Publisher/u)).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Install verified plugin' }));
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Publisher signature');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Package files');
+    expect(api.reviewRemotePlugin).toHaveBeenCalledWith(remote.id);
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(api.installRemotePlugin).toHaveBeenCalledWith(remote.id, true));
+  });
+
+  it('warns prominently before accepting an update permission expansion', async () => {
+    const remote: PluginCatalogEntry = {
+      ...bundled,
+      sourceType: 'remote',
+      installed: true,
+      integrity: 'valid',
+      publisherStatus: 'community',
+      signatureStatus: 'verified',
+      updateAvailable: true,
+      permissionExpansion: ['project:add-scripts'],
+    };
+    const baseReview = await bridge().reviewRemotePlugin!(remote.id);
+    setup(
+      bridge({
+        listMarketplacePlugins: vi.fn().mockResolvedValue([remote]),
+        reviewRemotePlugin: vi.fn().mockResolvedValue({
+          ...baseReview,
+          permissionExpansion: ['project:add-scripts'],
+        }),
+      }),
+    );
+    expect(await screen.findByRole('button', { name: 'Review update' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Review update' }));
+    expect(await screen.findByRole('dialog')).toHaveTextContent('additional permissions');
+    expect(screen.getByRole('dialog')).toHaveTextContent('+ project:add-scripts');
   });
 });

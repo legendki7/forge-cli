@@ -1,0 +1,48 @@
+{
+  "name": "@forgecli7/marketplace",
+  "version": "0.1.0",
+  "description": "Trusted Marketplace protocol, package verification, and secure update foundations for ForgeKi.",
+  "author": "ForgeKi contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/legendki7/forge-cli.git",
+    "directory": "packages/marketplace"
+  },
+  "homepage": "https://github.com/legendki7/forge-cli#readme",
+  "bugs": {
+    "url": "https://github.com/legendki7/forge-cli/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/browser.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts src/browser.ts --format esm --dts --watch"
+  },
+  "dependencies": {
+    "@forgecli7/plugin-sdk": "workspace:*",
+    "@forgecli7/plugins": "workspace:*"
+  },
+  "engines": {
+    "node": "^20.0.0 || ^22.0.0 || ^24.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

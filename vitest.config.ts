@@ -32,6 +32,9 @@ export default defineConfig({
       '@forgecli7/deployments': fileURLToPath(
         new URL('./packages/deployments/src/index.ts', import.meta.url),
       ),
+      '@forgecli7/marketplace': fileURLToPath(
+        new URL('./packages/marketplace/src/index.ts', import.meta.url),
+      ),
     },
   },
   test: {

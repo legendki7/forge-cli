@@ -73,6 +73,8 @@ describe('ForgeKi program', () => {
       'stacks',
       'plugins',
       'plugin',
+      'marketplace',
+      'update',
       'workspaces',
       'workspace',
       'environments',
@@ -91,6 +93,8 @@ describe('ForgeKi program', () => {
     expect(renderedHelp(create!)).toContain('--interactive');
     expect(renderedHelp(add!)).toContain('forge add github-actions');
     expect(renderedHelp(check!)).toContain('forge check');
+    expect(renderedHelp(program)).toContain('marketplace');
+    expect(renderedHelp(program)).toContain('update');
     expect(renderedHelp(program)).not.toContain('placeholder');
   });
 

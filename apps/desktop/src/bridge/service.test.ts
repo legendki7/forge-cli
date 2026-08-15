@@ -238,6 +238,31 @@ describe('desktop worker security boundary', () => {
     });
   });
 
+  it('keeps production Marketplace and update providers honestly unconfigured', async () => {
+    const marketplace: WorkerMessage[] = [];
+    await handleWorkerEnvelope(
+      { operationId: 'marketplace-status', operation: 'marketplace-status', request: {} },
+      (message) => marketplace.push(message),
+    );
+    expect(marketplace.at(-1)).toMatchObject({
+      type: 'operation-result',
+      payload: { configured: false, connectivity: 'unconfigured' },
+    });
+    const updates: WorkerMessage[] = [];
+    await handleWorkerEnvelope(
+      {
+        operationId: 'update-check',
+        operation: 'application-update-check',
+        request: { channel: 'beta', currentVersion: '0.1.0' },
+      },
+      (message) => updates.push(message),
+    );
+    expect(updates.at(-1)).toMatchObject({
+      type: 'operation-result',
+      payload: { state: 'unconfigured', signatureStatus: 'unavailable' },
+    });
+  });
+
   it('recomputes reviewed workspace plans, blocks forgery, creates, and scans read-only', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'forgeki-workspace-worker-'));
     temporaryDirectories.push(root);

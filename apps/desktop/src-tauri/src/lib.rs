@@ -403,6 +403,102 @@ async fn list_marketplace_plugins(
 }
 
 #[tauri::command]
+async fn marketplace_status(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+) -> Result<Value, String> {
+    run_typed_operation(&app, &state, "marketplace-status", serde_json::json!({})).await
+}
+
+#[tauri::command]
+async fn refresh_marketplace(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+) -> Result<Value, String> {
+    run_typed_operation(&app, &state, "marketplace-refresh", serde_json::json!({})).await
+}
+
+#[tauri::command]
+async fn clear_marketplace_cache(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+) -> Result<Value, String> {
+    run_typed_operation(&app, &state, "marketplace-cache-clear", serde_json::json!({})).await
+}
+
+#[tauri::command]
+async fn search_marketplace(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    options: Value,
+) -> Result<Value, String> {
+    run_typed_operation(&app, &state, "marketplace-search", options).await
+}
+
+#[tauri::command]
+async fn show_marketplace_plugin(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    id: String,
+) -> Result<Value, String> {
+    validate_plugin_id(&id)?;
+    run_typed_operation(&app, &state, "marketplace-show", serde_json::json!({ "pluginId": id })).await
+}
+
+#[tauri::command]
+async fn review_remote_plugin(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    id: String,
+) -> Result<Value, String> {
+    validate_plugin_id(&id)?;
+    run_typed_operation(&app, &state, "marketplace-review-install", serde_json::json!({ "pluginId": id })).await
+}
+
+#[tauri::command]
+async fn install_remote_plugin(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    id: String,
+    confirmed: bool,
+) -> Result<Value, String> {
+    validate_plugin_id(&id)?;
+    run_typed_operation(&app, &state, "plugin-install-remote", serde_json::json!({ "pluginId": id, "confirmed": confirmed })).await
+}
+
+#[tauri::command]
+async fn list_remote_plugin_updates(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+) -> Result<Value, String> {
+    run_typed_operation(&app, &state, "plugin-updates", serde_json::json!({})).await
+}
+
+#[tauri::command]
+async fn update_remote_plugin(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    id: String,
+    confirmed: bool,
+    confirm_permissions: bool,
+) -> Result<Value, String> {
+    validate_plugin_id(&id)?;
+    run_typed_operation(&app, &state, "plugin-update-remote", serde_json::json!({ "pluginId": id, "confirmed": confirmed, "confirmPermissions": confirm_permissions })).await
+}
+
+#[tauri::command]
+async fn check_application_update(
+    app: AppHandle,
+    state: State<'_, DesktopState>,
+    channel: String,
+) -> Result<Value, String> {
+    if !matches!(channel.as_str(), "stable" | "beta") {
+        return Err("The application update channel is invalid.".into());
+    }
+    run_typed_operation(&app, &state, "application-update-check", serde_json::json!({ "channel": channel, "currentVersion": env!("CARGO_PKG_VERSION") })).await
+}
+
+#[tauri::command]
 async fn validate_community_plugin(
     app: AppHandle,
     state: State<'_, DesktopState>,
@@ -1104,6 +1200,16 @@ pub fn run() {
             inspect_builtin_plugins,
             apply_builtin_plugin,
             list_marketplace_plugins,
+            marketplace_status,
+            refresh_marketplace,
+            clear_marketplace_cache,
+            search_marketplace,
+            show_marketplace_plugin,
+            review_remote_plugin,
+            install_remote_plugin,
+            list_remote_plugin_updates,
+            update_remote_plugin,
+            check_application_update,
             validate_community_plugin,
             install_community_plugin,
             install_bundled_plugin,

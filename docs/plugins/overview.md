@@ -8,10 +8,10 @@ ForgeKi supports two deliberately separate extension models:
   package scripts, environment-variable schemas, Stack Builder components, templates, and bounded
   scanner rules. ForgeKi never imports or executes plugin JavaScript.
 
-The Marketplace is an offline catalog with Built-in, Bundled, and Local providers. Bundled examples
-are previews until the user confirms installation. Local plugins are copied into ForgeKi's application
-data directory, validated again when loaded, and disabled if an integrity check fails. No provider
-downloads remote code in this release.
+The Marketplace is offline-first with Built-in, Bundled, Local, and optional signed Remote providers.
+Bundled examples are previews until the user confirms installation. Local and remote declarative
+plugins are copied into ForgeKi's application data directory, validated again when loaded, and
+disabled if integrity or revocation checks fail. The production remote provider is unconfigured.
 
 Installed community components participate in the same deterministic generation plan as built-in
 components. Existing conflict detection, ownership tracking, safe path rules, and no-overwrite writes

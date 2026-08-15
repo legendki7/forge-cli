@@ -42,6 +42,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: SDK validation, plugin storage, generation, CLI, Desktop UI, scanner, and security tests
         run: pnpm test
+      - name: Marketplace protocol, signatures, archives, cache, revocation, network, and updater fixtures
+        if: matrix.node == 22
+        run: pnpm marketplace:verify
 
   package:
     name: Build and packed-install smoke test
