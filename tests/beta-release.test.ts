@@ -13,6 +13,7 @@ import {
   assertProductionSigningKey,
   auditPrivateReleaseMaterial,
 } from '../scripts/beta-release.mjs';
+import { formatMarkdownTable } from '../scripts/beta-verify.mjs';
 
 const temporary: string[] = [];
 afterEach(async () =>
@@ -20,6 +21,26 @@ afterEach(async () =>
 );
 
 describe('Phase 7 beta release model', () => {
+  it('generates Prettier-stable release report tables', () => {
+    expect(
+      formatMarkdownTable(
+        ['Artifact', 'Size'],
+        [
+          ['`installer.exe`', '18.62 MiB'],
+          ['`manifest.json`', '0.01 MiB'],
+        ],
+        new Set([1]),
+      ),
+    ).toBe(
+      [
+        '| Artifact        |      Size |',
+        '| --------------- | --------: |',
+        '| `installer.exe` | 18.62 MiB |',
+        '| `manifest.json` |  0.01 MiB |',
+      ].join('\n'),
+    );
+  });
+
   it('enforces beta semantic versions and dist-tags', () => {
     expect(validateReleaseVersion('0.2.0-beta.0')).toBe('0.2.0-beta.0');
     expect(() => validateReleaseVersion('0.2.0')).toThrow('Invalid beta');

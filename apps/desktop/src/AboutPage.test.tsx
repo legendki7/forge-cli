@@ -10,6 +10,7 @@ describe('About ForgeKi', () => {
       checkDeveloperTools: async () => ({ tools: [], summary: [], checkedAt: 'now' }),
     } as never;
     render(<AboutPage bridge={bridge} state={createDefaultDesktopState()} plugins={[]} />);
+    expect(screen.getByRole('img', { name: 'ForgeKi logo' })).toBeVisible();
     expect(screen.getByText(/currently in Beta/u)).toBeInTheDocument();
     expect(screen.getAllByText(/provider unconfigured/u)).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Save JSON' })).toBeDisabled();

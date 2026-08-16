@@ -185,6 +185,12 @@ Developer Tools, Activity, and Settings pages. Its creation wizard
 uses the same project-name validation, scaffolder, detection engine, and trusted built-in plugins as
 the CLI. It never installs project dependencies.
 
+The Desktop application uses the official ForgeKi blue forge/terminal mark throughout its sidebar,
+Home identity, About page, browser metadata, executable, and Windows bundles. A centralized semantic
+token system derives accessible light and dark themes from the logo while keeping success, warning,
+danger, security, revocation, offline, and update states distinct. Canonical brand sources live in
+`apps/desktop/src/assets/brand`; generated native resources live in `apps/desktop/src-tauri/icons`.
+
 Built-in templates are Blank Next.js App, Next.js Dashboard, Next.js Blog, Next.js Portfolio, and
 Next.js Landing Page. They use TypeScript, App Router, local CSS, deterministic content, and no
 remote runtime assets. The Templates page supports local search, category and difficulty filters,

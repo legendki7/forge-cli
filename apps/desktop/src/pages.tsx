@@ -18,6 +18,7 @@ import type {
   RecentProject,
   RecentWorkspace,
 } from './types';
+import { BrandMark } from './BrandMark';
 
 export function PageHeading({
   eyebrow,
@@ -65,11 +66,14 @@ export function HomePage({
 }) {
   return (
     <section className="page">
-      <PageHeading
-        eyebrow="Local developer studio"
-        title="ForgeKi"
-        description="Build and configure development projects visually."
-      />
+      <div className="home-identity">
+        <BrandMark size="hero" decorative />
+        <PageHeading
+          eyebrow="Local developer studio"
+          title="ForgeKi"
+          description="Build and configure development projects visually."
+        />
+      </div>
       <div className="quick-grid">
         <Quick
           title="Build a workspace"

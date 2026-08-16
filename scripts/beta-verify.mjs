@@ -181,15 +181,19 @@ export async function verifyBetaRelease(repositoryRoot = root) {
 }
 
 function writeBetaReadinessReport(repositoryRoot, audit) {
-  const versionRows = audit.packages
-    .map(
-      (item) =>
-        `| \`${item.name}\` | \`${item.version}\` | \`${audit.versions[item.name] ?? 'unchanged'}\` |`,
-    )
-    .join('\n');
-  const sizeRows = Object.entries(audit.sizes)
-    .map(([name, size]) => `| \`${name}\` | ${formatBytes(size)} |`)
-    .join('\n');
+  const versionTable = formatMarkdownTable(
+    ['Package', 'Current', 'Planned Beta'],
+    audit.packages.map((item) => [
+      `\`${item.name}\``,
+      `\`${item.version}\``,
+      `\`${audit.versions[item.name] ?? 'unchanged'}\``,
+    ]),
+  );
+  const sizeTable = formatMarkdownTable(
+    ['Artifact', 'Size'],
+    Object.entries(audit.sizes).map(([name, size]) => [`\`${name}\``, formatBytes(size)]),
+    new Set([1]),
+  );
   const report = `# ForgeKi public Beta readiness report
 
 **Generated:** ${new Date().toISOString()}
@@ -206,15 +210,11 @@ function writeBetaReadinessReport(repositoryRoot, audit) {
 - npm authentication: ${audit.npm.authenticated ? `Authenticated as \`${audit.npm.user}\`` : 'Unavailable — owner must run `npm login` or configure Trusted Publishing'}
 - npm scope ownership: ${audit.npm.authenticated ? 'Must still be confirmed by the owner before publication' : 'Not verifiable without authentication'}
 
-| Package | Current | Planned Beta |
-| --- | --- | --- |
-${versionRows}
+${versionTable}
 
 ## Artifact audit
 
-| Artifact | Size |
-| --- | ---: |
-${sizeRows}
+${sizeTable}
 
 - Primary public installer: NSIS \`ForgeKi_<version>_x64-setup.exe\`
 - Optional enterprise installer: MSI \`ForgeKi_<version>_x64_en-US.msi\`
@@ -256,6 +256,22 @@ checksums, and the deterministic release manifest. It never publishes.
 No npm package, GitHub Release, tag, installer, Marketplace metadata, or updater metadata was published.
 `;
   writeFileSync(path.join(repositoryRoot, 'docs/beta-readiness-report.md'), report, 'utf8');
+}
+
+export function formatMarkdownTable(headers, rows, rightAligned = new Set()) {
+  const widths = headers.map((header, index) =>
+    Math.max(header.length, ...rows.map((row) => row[index].length)),
+  );
+  const render = (row) =>
+    `| ${row
+      .map((value, index) =>
+        rightAligned.has(index) ? value.padStart(widths[index]) : value.padEnd(widths[index]),
+      )
+      .join(' | ')} |`;
+  const divider = widths.map((width, index) =>
+    rightAligned.has(index) ? `${'-'.repeat(width - 1)}:` : '-'.repeat(width),
+  );
+  return [render(headers), render(divider), ...rows.map(render)].join('\n');
 }
 
 function npmStatus(repositoryRoot) {

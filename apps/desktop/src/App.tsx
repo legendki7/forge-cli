@@ -12,6 +12,7 @@ import {
 import { MarketplacePage } from './Marketplace';
 import { SecurityPage } from './SecurityPage';
 import { AboutPage } from './AboutPage';
+import { BrandMark } from './BrandMark';
 import type { PluginCatalogEntry } from '@forgecli7/plugins';
 import {
   addActivity,
@@ -480,7 +481,7 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
     <div className="desktop-shell">
       <aside className="sidebar" data-collapsed={state.preferences.sidebarCollapsed}>
         <div className="sidebar-brand">
-          <span>FK</span>
+          <BrandMark size="sidebar" decorative />
           <strong>ForgeKi</strong>
         </div>
         <nav aria-label="Main navigation">

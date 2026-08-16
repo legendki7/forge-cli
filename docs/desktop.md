@@ -1,5 +1,23 @@
 # ForgeKi Desktop
 
+## Visual identity
+
+ForgeKi Desktop uses the official supplied ForgeKi logo as its sole product mark. The canonical,
+transparent UI mark and padded application-icon source are stored in
+`apps/desktop/src/assets/brand/`. The sidebar, Home page, and About page render the canonical mark;
+components do not recreate or recolor it.
+
+Semantic light and dark theme tokens are centralized at the top of `apps/desktop/src/styles.css`.
+The palette is derived from the source logo (`#4088f8`, `#3898e8`, and `#38c0f0`) with darker or
+lighter accessible interaction shades where needed. Status colors remain semantic and independent
+from the brand palette.
+
+Tauri-generated PNG, ICO, ICNS, and Windows tile assets live under
+`apps/desktop/src-tauri/icons/`. `tauri.conf.json` assigns `icons/icon.ico` to NSIS installer and
+uninstaller output; the shared bundle icon list supplies the executable and MSI bundle. The
+application icon uses a dark neutral tile behind the unchanged mark so its white terminal glyph
+remains legible on light and dark Windows surfaces.
+
 Phase 6 adds trusted remote Marketplace, Security Center, and signed update-checking foundations.
 Environments and Deployment continue using `@forgecli7/deployments` through the fixed
 worker boundary for schema matrices, compatible target filtering, readiness, exact previews,

@@ -56,8 +56,13 @@ function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
 
 describe('desktop application shell', () => {
   it('opens Home by default with real empty states and quick actions', () => {
-    render(<App bridge={bridge()} />);
+    const { container } = render(<App bridge={bridge()} />);
     expect(screen.getByRole('heading', { name: 'ForgeKi' })).toBeVisible();
+    expect(container.querySelector('.sidebar-brand img')).toHaveAttribute(
+      'src',
+      expect.stringContaining('forgeki-mark.png'),
+    );
+    expect(container.querySelector('.home-identity img')).toBeVisible();
     expect(screen.getByText('No recent projects')).toBeVisible();
     expect(screen.getByText('No activity yet')).toBeVisible();
     expect(screen.getByRole('button', { name: /^Create a project/u })).toBeVisible();
@@ -182,5 +187,16 @@ describe('stored desktop state', () => {
     stored.preferences.mode = 'advanced';
     render(<App bridge={bridge({ loadDesktopState: vi.fn().mockResolvedValue(stored) })} />);
     await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', 'dark'));
+  });
+
+  it('switches between the branded light and dark theme preferences', async () => {
+    const stored = createDefaultDesktopState();
+    const api = bridge({ loadDesktopState: vi.fn().mockResolvedValue(stored) });
+    render(<App bridge={api} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    await userEvent.selectOptions(screen.getByLabelText('Theme'), 'dark');
+    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', 'dark'));
+    await userEvent.selectOptions(screen.getByLabelText('Theme'), 'light');
+    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', 'light'));
   });
 });

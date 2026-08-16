@@ -5,6 +5,7 @@ import { PageHeading } from './pages';
 import type { DesktopBridge, PersistedDesktopState } from './types';
 import { createSafeDiagnostics, diagnosticsJson, type ForgeKiDiagnostics } from './diagnostics';
 import { FORGEKI_LICENSE, FORGEKI_REPOSITORY, FORGEKI_VERSION } from './version';
+import { BrandMark } from './BrandMark';
 
 export function AboutPage({
   bridge,
@@ -57,18 +58,21 @@ export function AboutPage({
         description="Version, trust status, updates, and privacy-safe diagnostics."
       />
       <div className="settings-stack">
-        <section className="panel">
-          <h2>ForgeKi Desktop</h2>
-          <dl className="detail-grid">
-            <Item label="Version" value={FORGEKI_VERSION} />
-            <Item
-              label="Channel"
-              value={state.preferences.updateChannel === 'beta' ? 'Beta' : 'Stable'}
-            />
-            <Item label="License" value={FORGEKI_LICENSE} />
-            <Item label="Repository" value={FORGEKI_REPOSITORY} />
-          </dl>
-          <p>ForgeKi is currently in Beta. APIs and plugin schemas may evolve.</p>
+        <section className="panel about-identity">
+          <BrandMark size="about" />
+          <div>
+            <h2>ForgeKi Desktop</h2>
+            <dl className="detail-grid">
+              <Item label="Version" value={FORGEKI_VERSION} />
+              <Item
+                label="Channel"
+                value={state.preferences.updateChannel === 'beta' ? 'Beta' : 'Stable'}
+              />
+              <Item label="License" value={FORGEKI_LICENSE} />
+              <Item label="Repository" value={FORGEKI_REPOSITORY} />
+            </dl>
+            <p>ForgeKi is currently in Beta. APIs and plugin schemas may evolve.</p>
+          </div>
         </section>
         <section className="panel">
           <h2>Trust status</h2>

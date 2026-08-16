@@ -33,6 +33,12 @@ if (!/^repository = "https:\/\/github\.com\/legendki7\/forge-cli"$/mu.test(cargo
 if (!config.bundle?.externalBin?.includes('binaries/forgeki-worker')) {
   failures.push('the fixed ForgeKi worker sidecar must be bundled.');
 }
+if (config.bundle?.windows?.nsis?.installerIcon !== 'icons/icon.ico') {
+  failures.push('the NSIS installer must use the official ForgeKi icon.');
+}
+if (config.bundle?.windows?.nsis?.uninstallerIcon !== 'icons/icon.ico') {
+  failures.push('the NSIS uninstaller must use the official ForgeKi icon.');
+}
 if (capability.permissions.some((permission) => String(permission).startsWith('shell:'))) {
   failures.push('the frontend must not receive shell permissions.');
 }
@@ -40,6 +46,9 @@ if (capability.permissions.some((permission) => permission !== 'core:default')) 
   failures.push('the main window capability must remain core-only.');
 }
 if (!config.app?.security?.csp) failures.push('the desktop content security policy is missing.');
+if (config.plugins?.updater?.pubkey !== '' || config.plugins?.updater?.endpoints?.length !== 0) {
+  failures.push('the base updater configuration must remain explicitly unconfigured.');
+}
 if (!cargoMetadata.includes('tauri-plugin-updater = "2"')) {
   failures.push('the native Tauri v2 updater dependency is missing.');
 }
@@ -68,11 +77,32 @@ for (const relative of [
   'Cargo.toml',
   'src/lib.rs',
   'src/main.rs',
-  'icons/icon.svg',
   'icons/icon.ico',
   'icons/icon.icns',
+  'icons/icon.png',
+  '../src/assets/brand/forgeki-mark.png',
+  '../src/assets/brand/forgeki-app-icon.png',
 ]) {
   if (!existsSync(path.join(tauriRoot, relative))) failures.push(`${relative} is missing.`);
+}
+
+for (const relative of config.bundle?.icon ?? []) {
+  if (!existsSync(path.join(tauriRoot, relative))) failures.push(`${relative} is missing.`);
+}
+
+const canonicalMark = readFileSync(
+  path.join(appRoot, 'src', 'assets', 'brand', 'forgeki-mark.png'),
+);
+const applicationIcon = readFileSync(
+  path.join(appRoot, 'src', 'assets', 'brand', 'forgeki-app-icon.png'),
+);
+for (const [name, content] of [
+  ['canonical ForgeKi mark', canonicalMark],
+  ['ForgeKi application icon', applicationIcon],
+]) {
+  if (content.readUInt32BE(16) !== 1024 || content.readUInt32BE(20) !== 1024) {
+    failures.push(`${name} must be a 1024x1024 PNG.`);
+  }
 }
 
 if (failures.length) throw new Error(failures.join('\n'));
