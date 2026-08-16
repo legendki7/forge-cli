@@ -1,5 +1,9 @@
 # ForgeKi
 
+[User Guide](./docs/user-guide/README.md) ·
+[دليل الاستخدام العربي](./docs/user-guide/README.ar.md) · [Documentation](./docs/) ·
+[Contributing](./CONTRIBUTING.md)
+
 > **ForgeKi is currently in Beta.** APIs and plugin schemas may evolve. Windows is the currently
 > validated native Desktop platform; macOS/Linux native builds are unvalidated. Unsigned Windows
 > installers may trigger reputation warnings, and production Marketplace/update providers remain
@@ -30,6 +34,15 @@ and production readiness or cross-platform support is not yet claimed.
 > may change before a stable release. It scaffolds deterministic Next.js, React/Vite, and Express
 > TypeScript projects and provides visual stack planning, project detection, Docker configuration,
 > and GitHub Actions CI generation.
+
+## User Guide
+
+The complete beginner-friendly guide covers ForgeKi Desktop and the `forge` CLI, from installation
+and first project creation through Stacks, Workspaces, plugins, environments, deployment configuration,
+security, diagnostics, and troubleshooting.
+
+- [English User Guide](./docs/user-guide/README.md)
+- [دليل الاستخدام العربي](./docs/user-guide/README.ar.md)
 
 ## Highlights
 
