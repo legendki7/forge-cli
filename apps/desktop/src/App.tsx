@@ -11,6 +11,7 @@ import {
 } from './pages';
 import { MarketplacePage } from './Marketplace';
 import { SecurityPage } from './SecurityPage';
+import { AboutPage } from './AboutPage';
 import type { PluginCatalogEntry } from '@forgecli7/plugins';
 import {
   addActivity,
@@ -53,6 +54,7 @@ const navigation: readonly { id: NavigationPage; label: string; icon: string }[]
   { id: 'security', label: 'Security', icon: 'X' },
   { id: 'tools', label: 'Developer Tools', icon: 'D' },
   { id: 'activity', label: 'Activity', icon: 'A' },
+  { id: 'about', label: 'About', icon: 'I' },
   { id: 'settings', label: 'Settings', icon: 'G' },
 ];
 
@@ -458,6 +460,8 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
             onOpen={(path) => void bridge.openProjectFolder(path)}
           />
         );
+      case 'about':
+        return <AboutPage bridge={bridge} state={state} plugins={pluginCatalog} />;
       case 'settings':
         return (
           <SettingsPage

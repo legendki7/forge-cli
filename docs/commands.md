@@ -163,6 +163,18 @@ forge deployment export ./my-platform --env staging --target docker --output ./d
 There is no `forge deploy` command. These operations do not authenticate, contact infrastructure,
 start containers, invoke Kubernetes, or display secret values. See [deployment CLI](deployment/cli.md).
 
+## `forge doctor`
+
+```bash
+forge doctor
+forge doctor --json
+```
+
+Doctor reports the ForgeKi version, Node compatibility, bounded developer-tool versions, preferred
+package manager, Beta channel, and whether Marketplace/update providers are configured. JSON uses
+schema version 1. It never enumerates the environment or prints credentials, usernames, home paths,
+project names, or project paths.
+
 ## Known limitations
 
 - Detection is limited to Node.js projects and the documented frameworks.

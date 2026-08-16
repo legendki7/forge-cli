@@ -12,6 +12,7 @@ the first beta release; the executable command remains `forge`.
 ```bash
 npm install --global @forgecli7/cli
 forge --help
+forge doctor --json
 forge workspaces presets
 forge workspace create my-platform --preset saas-foundation --no-git
 forge workspace check ./my-platform

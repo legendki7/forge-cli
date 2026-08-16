@@ -1,0 +1,106 @@
+name: Public Beta Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Reviewed x.y.z-beta.n version already committed to all Desktop manifests
+        required: true
+        type: string
+      confirm:
+        description: Type PUBLISH_FORGEKI_BETA to authorize irreversible publication
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forgeki-public-beta
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'legendki7/forge-cli' && github.event.repository.fork == false && inputs.confirm == 'PUBLISH_FORGEKI_BETA'
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm install --frozen-lockfile
+      - name: Require synchronized reviewed version
+        shell: pwsh
+        run: |
+          if ((node -p "require('./apps/desktop/package.json').version") -ne '${{ inputs.version }}') { throw 'Desktop version mismatch' }
+          if ((node -p "require('./packages/cli/package.json').version") -ne '${{ inputs.version }}') { throw 'CLI version mismatch' }
+      - name: Require updater configuration and protected Tauri signing key
+        shell: pwsh
+        env:
+          FORGEKI_TAURI_UPDATER_PUBLIC_KEY: ${{ vars.FORGEKI_TAURI_UPDATER_PUBLIC_KEY }}
+          FORGEKI_TAURI_UPDATER_ENDPOINT: ${{ vars.FORGEKI_TAURI_UPDATER_ENDPOINT }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) { throw 'Tauri updater private signing key is required' }
+          node scripts/prepare-tauri-release-config.mjs
+      - run: pnpm release:beta:verify
+        env:
+          FORGEKI_TAURI_RELEASE_CONFIG: release-staging/tauri.release.conf.json
+          FORGEKI_RELEASE_BASE_URL: ${{ vars.FORGEKI_RELEASE_BASE_URL }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forgeki-public-beta-assets
+          path: release-staging/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-npm:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: public-beta
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Publish coordinated packages under beta only
+        run: pnpm changeset publish --tag beta
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+
+  github-prerelease:
+    needs: [verify, publish-npm]
+    runs-on: ubuntu-latest
+    environment: public-beta
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: forgeki-public-beta-assets
+          path: release-staging
+      - name: Attest release assets
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: release-staging/*
+      - name: Create Beta GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "forgeki-v${{ inputs.version }}" release-staging/* --repo "${{ github.repository }}" --prerelease --target "${{ github.sha }}" --title "ForgeKi ${{ inputs.version }} Beta" --notes-file release-staging/release-notes.md

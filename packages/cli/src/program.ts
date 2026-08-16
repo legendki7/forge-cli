@@ -7,6 +7,7 @@ import { registerStacksCommand } from './commands/stacks.js';
 import { registerPluginCommands } from './commands/plugins.js';
 import { registerWorkspaceCommands } from './commands/workspaces.js';
 import { registerDeploymentCommands } from './commands/deployment.js';
+import { registerDoctorCommand } from './commands/doctor.js';
 import {
   defaultMarketplaceDependencies,
   registerMarketplaceCommands,
@@ -43,6 +44,7 @@ export function createProgram(
   registerMarketplaceCommands(program, context, marketplaceDependencies);
   registerWorkspaceCommands(program, context);
   registerDeploymentCommands(program, context);
+  registerDoctorCommand(program, context, { version });
 
   return program;
 }

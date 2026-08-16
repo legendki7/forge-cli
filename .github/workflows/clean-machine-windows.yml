@@ -1,0 +1,44 @@
+name: Clean Machine Windows Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: Workflow run containing reviewed ForgeKi installer artifacts
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect-installer:
+    runs-on: windows-latest
+    environment: public-beta
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.artifact_run_id }}
+          github-token: ${{ github.token }}
+          path: release-assets
+      - name: Confirm no developer runtime is a launch prerequisite
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem release-assets -Recurse -Filter '*-setup.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'NSIS installer missing' }
+          $env:Path = "$env:SystemRoot\System32;$env:SystemRoot"
+          Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait
+          $application = Get-ChildItem $env:LOCALAPPDATA -Filter 'ForgeKi.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $application) { throw 'Installed ForgeKi executable missing' }
+          $process = Start-Process -FilePath $application.FullName -PassThru
+          Start-Sleep -Seconds 10
+          if ($process.HasExited) { throw 'ForgeKi did not remain running without developer runtimes on PATH' }
+          Stop-Process -Id $process.Id
+          echo 'Installed ForgeKi launched without Node.js, pnpm, Rust, or Cargo on PATH.'
+          $uninstaller = Get-ChildItem $application.Directory -Filter 'uninstall*.exe' | Select-Object -First 1
+          if (-not $uninstaller) { throw 'ForgeKi uninstaller missing' }
+          Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -Wait
+          if (Test-Path $application.FullName) { throw 'ForgeKi remained installed after silent uninstall' }
+          echo 'Install, dependency-free launch, and uninstall passed.'
+          echo 'Project creation, Stack Builder, Marketplace, workspace, deployment, and persistence remain protected interactive checklist items.'

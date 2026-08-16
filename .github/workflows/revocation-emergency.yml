@@ -1,0 +1,72 @@
+name: Emergency Marketplace Revocation
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: publisher, publisher-key, plugin-version, or package-digest
+        required: true
+        type: choice
+        options: [publisher, publisher-key, plugin-version, package-digest]
+      value:
+        description: Exact identifier or digest to revoke
+        required: true
+        type: string
+      reason:
+        description: Audit-friendly public revocation reason
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forgeki-revocation-emergency
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.repository == 'legendki7/forge-cli' && github.event.repository.fork == false
+    runs-on: ubuntu-latest
+    environment: public-beta
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm marketplace:build
+      - name: Require meaningful reason
+        run: test "${#REVOCATION_REASON}" -ge 20
+        env:
+          REVOCATION_REASON: ${{ inputs.reason }}
+      - name: Prepare reviewed revocation metadata only
+        run: node scripts/revocation-release.mjs --type "${{ inputs.type }}" --value "${{ inputs.value }}" --reason "$REVOCATION_REASON"
+        env:
+          REVOCATION_REASON: ${{ inputs.reason }}
+      - name: Materialize emergency signing key without logging it
+        shell: bash
+        env:
+          MARKETPLACE_PRIVATE_KEY: ${{ secrets.MARKETPLACE_EMERGENCY_PRIVATE_KEY }}
+        run: |
+          test -n "$MARKETPLACE_PRIVATE_KEY"
+          install -m 700 -d "$RUNNER_TEMP/forgeki-signing"
+          printf '%s' "$MARKETPLACE_PRIVATE_KEY" > "$RUNNER_TEMP/forgeki-signing/emergency.key"
+      - name: Sign revocations and verify before review
+        env:
+          MARKETPLACE_ROOT_PUBLIC_KEY: ${{ vars.MARKETPLACE_ROOT_PUBLIC_KEY }}
+          MARKETPLACE_ROOT_KEY_ID: ${{ vars.MARKETPLACE_ROOT_KEY_ID }}
+        run: |
+          node scripts/marketplace-production-guard.mjs --private-key-file "$RUNNER_TEMP/forgeki-signing/emergency.key"
+          node scripts/marketplace-sign.mjs --input release-staging/revocations.json --output release-staging/signed-revocations.json --type revocations --key-id "$MARKETPLACE_ROOT_KEY_ID" --private-key-file "$RUNNER_TEMP/forgeki-signing/emergency.key"
+          node scripts/verify-signed-marketplace.mjs --input release-staging/signed-revocations.json --type revocations --key-id "$MARKETPLACE_ROOT_KEY_ID" --public-key "$MARKETPLACE_ROOT_PUBLIC_KEY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-revocation-review-${{ github.sha }}
+          path: |
+            release-staging/revocations.json
+            release-staging/signed-revocations.json
+          if-no-files-found: error
+      - run: echo 'Verified signed metadata requires a second protected hosting action; nothing was published automatically.'

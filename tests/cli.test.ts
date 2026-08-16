@@ -79,6 +79,7 @@ describe('ForgeKi program', () => {
       'workspace',
       'environments',
       'deployment',
+      'doctor',
     ]);
   });
 

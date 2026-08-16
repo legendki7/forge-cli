@@ -49,6 +49,7 @@ export type NavigationPage =
   | 'security'
   | 'tools'
   | 'activity'
+  | 'about'
   | 'settings';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type UserMode = 'beginner' | 'advanced';

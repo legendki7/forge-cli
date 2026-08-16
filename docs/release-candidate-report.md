@@ -1,6 +1,6 @@
 # ForgeKi release-candidate report
 
-**Audit date:** 2026-08-15
+**Audit date:** 2026-08-16
 
 **Final status:** Ready for beta publication pending npm scope ownership and authentication
 
@@ -56,6 +56,7 @@ tracked package versions were not edited.
 | `calm-projects-create.md`        | `@forgecli7/plugin-docker`         | patch | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                                   |
 | `calm-projects-create.md`        | `@forgecli7/plugin-github-actions` | patch | Yes         | Add offline Next.js TypeScript scaffolding through `forge create`, with safe destination handling, package-manager metadata detection, optional Git initialization, and Docker/GitHub Actions plugin orchestration.                                                   |
 | `gentle-create-prompts.md`       | `@forgecli7/cli`                   | minor | Yes         | Add an interactive `forge create` wizard with partial-option prompting, a confirmation summary, non-TTY safeguards, and injectable prompt and process adapters while preserving named command automation.                                                             |
+| `phase-seven-beta-readiness.md`  | `@forgecli7/cli`                   | minor | Yes         | Add privacy-safe `forge doctor` diagnostics and the coordinated public Beta release foundation.                                                                                                                                                                       |
 | `quiet-windows-rename.md`        | `@forgecli7/templates`             | patch | No          | Retry transient Windows staging-directory renames without weakening concurrent-destination safety.                                                                                                                                                                    |
 | `safe-plugin-platform.md`        | `@forgecli7/plugin-sdk`            | minor | Yes         | Add ForgeKi's declarative plugin platform: a versioned SDK, validated local storage with integrity checks, offline Marketplace providers, Stack Builder and scanner contributions, plugin-management CLI commands, bundled examples, and security-focused validation. |
 | `safe-plugin-platform.md`        | `@forgecli7/core`                  | minor | Yes         | Add ForgeKi's declarative plugin platform: a versioned SDK, validated local storage with integrity checks, offline Marketplace providers, Stack Builder and scanner contributions, plugin-management CLI commands, bundled examples, and security-focused validation. |

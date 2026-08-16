@@ -1,0 +1,33 @@
+name: Release Dry Run
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forgeki-release-dry-run-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  beta-dry-run:
+    if: github.repository == 'legendki7/forge-cli' && github.event.repository.fork == false
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm release:beta:verify
+      - name: Upload inspection-only staging output
+        uses: actions/upload-artifact@v4
+        with:
+          name: forgeki-beta-dry-run-${{ github.sha }}
+          path: release-staging/
+          if-no-files-found: error
+          retention-days: 14

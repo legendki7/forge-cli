@@ -1,5 +1,10 @@
 # ForgeKi
 
+> **ForgeKi is currently in Beta.** APIs and plugin schemas may evolve. Windows is the currently
+> validated native Desktop platform; macOS/Linux native builds are unvalidated. Unsigned Windows
+> installers may trigger reputation warnings, and production Marketplace/update providers remain
+> unavailable until the repository owner configures them.
+
 ForgeKi is an open-source, TypeScript-based command-line toolkit for scaffolding and configuring
 development projects. It provides a modular CLI shell, stable extension contracts, and dedicated
 packages for templates and plugins.
@@ -94,6 +99,7 @@ pnpm dev -- workspaces presets
 pnpm dev -- workspace create my-platform --preset saas-foundation --no-git
 pnpm dev -- environments list
 pnpm dev -- deployment plan ./my-platform --env production --target kubernetes
+pnpm dev -- doctor --json
 ```
 
 Run `forge add docker` from a Node.js project to create a starter `Dockerfile` and `.dockerignore`.
@@ -301,6 +307,11 @@ pnpm desktop:check # Validate the desktop UI, bridge, types, and Tauri configura
 
 ## Releases
 
+Public Beta infrastructure is documented in the [release operations guide](docs/public-beta-releasing.md),
+the [owner action checklist](docs/release-owner-actions.md), and the generated
+[Beta readiness report](docs/beta-readiness-report.md). `pnpm release:beta:verify` performs the full
+non-publishing dry run; publication remains a separate protected manual action.
+
 ForgeKi uses [Changesets](https://github.com/changesets/changesets) to describe and publish package
 versions. `pnpm release:inspect` builds and validates the actual package tarballs without publishing;
 `pnpm release:smoke` installs them into an isolated temporary directory and exercises the packed
@@ -308,6 +319,11 @@ CLI. `pnpm release:verify` performs the complete non-publishing release-candidat
 blocked until repository identity is configured. Publishing is intentionally separate and opt-in.
 See [the release checklist](docs/releasing.md) and
 [current candidate report](docs/release-candidate-report.md) for the beta process.
+
+For support, `forge doctor` prints a concise runtime/configuration summary and `forge doctor --json`
+emits a stable allowlisted schema. Neither form prints environment values, credentials, usernames,
+home paths, or project paths. ForgeKi Desktop provides the same privacy boundary through **About →
+Export Diagnostics**, with a mandatory preview before saving.
 
 ## Contributing
 
@@ -318,7 +334,7 @@ a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) and
 
 ## Roadmap
 
-- Production Marketplace/update hosting, publisher onboarding, and public signed releases
+- Owner-configured production Marketplace/update hosting and public signed releases
 - Visual stack builder
 - Additional frameworks
 - macOS native validation

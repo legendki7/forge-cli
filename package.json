@@ -37,6 +37,8 @@
     "release:inspect": "node scripts/release-inspect.mjs",
     "release:smoke": "node scripts/packed-smoke.mjs",
     "release:verify": "node scripts/release-verify.mjs",
+    "release:beta:verify": "node scripts/beta-verify.mjs",
+    "release:version:sync": "node scripts/sync-release-version.mjs",
     "release:publish": "pnpm build && changeset publish"
   },
   "devDependencies": {

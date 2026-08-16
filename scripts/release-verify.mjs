@@ -139,15 +139,20 @@ function validateDocumentationIdentity(repositoryRoot) {
 }
 
 function validateWorkflowSecurity(repositoryRoot) {
-  const workflow = readFileSync(path.join(repositoryRoot, '.github/workflows/release.yml'), 'utf8');
+  const workflow = readFileSync(
+    path.join(repositoryRoot, '.github/workflows/beta-release.yml'),
+    'utf8',
+  );
   const requirements = [
     ['workflow_dispatch:', 'manual dispatch'],
-    ['environment: npm-beta', 'protected npm-beta environment'],
+    ['environment: public-beta', 'protected public-beta environment'],
     ['pnpm changeset publish --tag beta', 'beta distribution tag'],
-    ['needs: validate', 'validation dependency'],
+    ['needs: verify', 'validation dependency'],
     ['pnpm install --frozen-lockfile', 'lockfile enforcement'],
-    ['pnpm release:verify', 'complete release verification'],
+    ['pnpm release:beta:verify', 'complete Beta release verification'],
     ['concurrency:', 'release concurrency control'],
+    ["inputs.confirm == 'PUBLISH_FORGEKI_BETA'", 'explicit publication confirmation'],
+    ['github.event.repository.fork == false', 'fork publication guard'],
   ];
   for (const [expected, label] of requirements) {
     if (!workflow.includes(expected)) throw new Error(`Release workflow is missing ${label}.`);

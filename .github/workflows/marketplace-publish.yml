@@ -1,0 +1,57 @@
+name: Publish Signed Marketplace Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: Protected commit or tag containing reviewed Marketplace source metadata
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forgeki-marketplace-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-sign:
+    if: github.repository == 'legendki7/forge-cli' && github.event.repository.fork == false
+    runs-on: ubuntu-latest
+    environment: public-beta
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_ref }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm release:verify
+      - name: Materialize protected signing key without logging it
+        shell: bash
+        env:
+          MARKETPLACE_PRIVATE_KEY: ${{ secrets.MARKETPLACE_PRIVATE_KEY }}
+        run: |
+          test -n "$MARKETPLACE_PRIVATE_KEY"
+          install -m 700 -d "$RUNNER_TEMP/forgeki-signing"
+          printf '%s' "$MARKETPLACE_PRIVATE_KEY" > "$RUNNER_TEMP/forgeki-signing/marketplace.key"
+      - name: Reject missing and fixture signing keys
+        run: node scripts/marketplace-production-guard.mjs --private-key-file "$RUNNER_TEMP/forgeki-signing/marketplace.key"
+      - name: Require reviewed production source metadata
+        run: test -f marketplace/source/v1/index.json && test -f marketplace/source/v1/publishers.json && test -f marketplace/source/v1/revocations.json
+      - name: Sign and self-verify static metadata
+        run: node scripts/marketplace-release.mjs --source marketplace/source/v1 --output release-staging/marketplace/v1 --private-key-file "$RUNNER_TEMP/forgeki-signing/marketplace.key" --key-id "${{ vars.MARKETPLACE_ROOT_KEY_ID }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-marketplace-assets-${{ github.sha }}
+          path: release-staging/marketplace/v1/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publication provider boundary
+        run: |
+          echo 'Signed assets were produced for protected manual inspection.'
+          echo 'No production Marketplace hosting provider is configured; no upload was attempted.'

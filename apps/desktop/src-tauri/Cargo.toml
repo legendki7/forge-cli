@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "ForgeKi Desktop"
 authors = ["ForgeKi contributors"]
 repository = "https://github.com/legendki7/forge-cli"
+license = "MIT"
 edition = "2021"
 
 [lib]
@@ -21,3 +22,6 @@ tauri = { version = "2", features = [] }
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-updater = "2"

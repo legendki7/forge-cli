@@ -3,13 +3,6 @@ name: Changesets release
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      publish_beta:
-        description: Publish the reviewed prerelease packages with the beta npm tag
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -54,30 +47,3 @@ jobs:
           title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-beta:
-    name: Publish reviewed beta packages
-    if: github.event_name == 'workflow_dispatch' && inputs.publish_beta
-    needs: validate
-    runs-on: ubuntu-latest
-    environment: npm-beta
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          registry-url: https://registry.npmjs.org
-      - run: pnpm install --frozen-lockfile
-      - name: Require npm authentication
-        run: test -n "$NODE_AUTH_TOKEN"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Publish with beta tag
-        run: pnpm changeset publish --tag beta
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

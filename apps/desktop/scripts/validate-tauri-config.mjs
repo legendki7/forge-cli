@@ -40,6 +40,12 @@ if (capability.permissions.some((permission) => permission !== 'core:default')) 
   failures.push('the main window capability must remain core-only.');
 }
 if (!config.app?.security?.csp) failures.push('the desktop content security policy is missing.');
+if (!cargoMetadata.includes('tauri-plugin-updater = "2"')) {
+  failures.push('the native Tauri v2 updater dependency is missing.');
+}
+if (!rustBridge.includes('tauri_plugin_updater::Builder::new().build()')) {
+  failures.push('the native Tauri v2 updater plugin is not initialized.');
+}
 for (const command of [
   'select_destination',
   'create_project',

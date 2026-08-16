@@ -5,7 +5,7 @@ labels: ['bug']
 body:
   - type: markdown
     attributes:
-      value: Please search existing issues and never include credentials or private project data.
+      value: Please search existing issues. Never include tokens, credentials, environment values, or unsanitized private logs.
   - type: input
     id: version
     attributes:
@@ -20,6 +20,27 @@ body:
       placeholder: OS, Node.js version, and package manager
     validations:
       required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Product surface
+      options:
+        - ForgeKi Desktop
+        - ForgeKi CLI
+    validations:
+      required: true
+  - type: input
+    id: architecture
+    attributes:
+      label: Architecture
+      placeholder: x64, arm64, or unknown
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized-logs
+    attributes:
+      label: Sanitized diagnostics or logs
+      description: Preview ForgeKi diagnostics first. Remove usernames, paths, project names, environment values, and secrets.
   - type: textarea
     id: reproduction
     attributes:
