@@ -217,4 +217,52 @@ describe('stored desktop state', () => {
     await userEvent.selectOptions(screen.getByLabelText('Theme'), 'light');
     await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', 'light'));
   });
+
+  it('switches language immediately, applies direction, persists it, and can switch back', async () => {
+    const api = bridge();
+    render(<App bridge={api} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    const selector = screen.getByLabelText('Display language');
+    expect(selector).toHaveValue('en');
+    expect(within(selector).getByRole('option', { name: 'English' })).toBeVisible();
+    expect(within(selector).getByRole('option', { name: 'العربية' })).toBeVisible();
+
+    await userEvent.selectOptions(selector, 'ar');
+    await waitFor(() => {
+      expect(document.documentElement).toHaveAttribute('lang', 'ar');
+      expect(document.documentElement).toHaveAttribute('dir', 'rtl');
+      expect(screen.getByRole('button', { name: 'الرئيسية' })).toBeVisible();
+    });
+    expect(screen.getByRole('heading', { name: 'الإعدادات' })).toBeVisible();
+    await waitFor(() =>
+      expect(api.saveDesktopState).toHaveBeenCalledWith(
+        expect.objectContaining({ preferences: expect.objectContaining({ language: 'ar' }) }),
+      ),
+    );
+
+    await userEvent.selectOptions(screen.getByLabelText('لغة العرض'), 'en');
+    await waitFor(() => {
+      expect(document.documentElement).toHaveAttribute('lang', 'en');
+      expect(document.documentElement).toHaveAttribute('dir', 'ltr');
+      expect(screen.getByRole('button', { name: 'Home' })).toBeVisible();
+    });
+  });
+
+  it('reopens Workspace Builder repeatedly in Arabic without bridge startup work or state loss', async () => {
+    const stored = createDefaultDesktopState();
+    stored.preferences.language = 'ar';
+    stored.preferences.theme = 'dark';
+    const api = bridge({ loadDesktopState: vi.fn().mockResolvedValue(stored) });
+    render(<App bridge={api} />);
+    const builder = await screen.findByRole('button', { name: 'منشئ مساحة العمل' });
+    await userEvent.click(builder);
+    expect(await screen.findByRole('heading', { name: 'منشئ مساحة العمل' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'الرئيسية' }));
+    await userEvent.click(screen.getByRole('button', { name: 'منشئ مساحة العمل' }));
+    expect(await screen.findByLabelText('لوحة معمارية مساحة العمل')).toBeVisible();
+    expect(api.selectDestination).not.toHaveBeenCalled();
+    expect(api.planWorkspace).not.toHaveBeenCalled();
+    expect(api.scanWorkspace).not.toHaveBeenCalled();
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+  });
 });

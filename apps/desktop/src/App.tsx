@@ -14,6 +14,7 @@ import { SecurityPage } from './SecurityPage';
 import { AboutPage } from './AboutPage';
 import { BrandMark } from './BrandMark';
 import { PageErrorBoundary } from './PageErrorBoundary';
+import { I18nProvider, LocalizedRoot } from './i18n';
 import type { PluginCatalogEntry } from '@forgecli7/plugins';
 import {
   addActivity,
@@ -486,54 +487,56 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
   })();
 
   return (
-    <div className="desktop-shell">
-      <aside className="sidebar" data-collapsed={state.preferences.sidebarCollapsed}>
-        <div className="sidebar-brand">
-          <BrandMark size="sidebar" decorative />
-          <strong>ForgeKi</strong>
-        </div>
-        <nav aria-label="Main navigation">
-          {(['Workspace', 'Operate', 'System'] as const).map((group) => (
-            <div className="nav-group" key={group}>
-              <p className="nav-group-label">{group}</p>
-              {navigation
-                .filter((item) => item.group === group)
-                .map((item) => (
-                  <button
-                    key={item.id}
-                    className={page === item.id ? 'selected' : ''}
-                    aria-current={page === item.id ? 'page' : undefined}
-                    aria-label={item.label}
-                    title={state.preferences.sidebarCollapsed ? item.label : undefined}
-                    onClick={() => navigate(item.id)}
-                  >
-                    <span aria-hidden="true">{item.icon}</span>
-                    <span className="nav-label">{item.label}</span>
-                  </button>
-                ))}
-            </div>
-          ))}
-        </nav>
-        <button
-          className="collapse-button"
-          aria-label={state.preferences.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          onClick={() =>
-            updateState((current) => ({
-              ...current,
-              preferences: {
-                ...current.preferences,
-                sidebarCollapsed: !current.preferences.sidebarCollapsed,
-              },
-            }))
-          }
-        >
-          <span aria-hidden="true">{state.preferences.sidebarCollapsed ? '›' : '‹'}</span>
-          <span className="nav-label">Collapse</span>
-        </button>
-      </aside>
-      <main className="workspace" data-page={page}>
-        {content}
-      </main>
-    </div>
+    <I18nProvider language={state.preferences.language}>
+      <LocalizedRoot className="desktop-shell">
+        <aside className="sidebar" data-collapsed={state.preferences.sidebarCollapsed}>
+          <div className="sidebar-brand">
+            <BrandMark size="sidebar" decorative />
+            <strong>ForgeKi</strong>
+          </div>
+          <nav aria-label="Main navigation">
+            {(['Workspace', 'Operate', 'System'] as const).map((group) => (
+              <div className="nav-group" key={group}>
+                <p className="nav-group-label">{group}</p>
+                {navigation
+                  .filter((item) => item.group === group)
+                  .map((item) => (
+                    <button
+                      key={item.id}
+                      className={page === item.id ? 'selected' : ''}
+                      aria-current={page === item.id ? 'page' : undefined}
+                      aria-label={item.label}
+                      title={state.preferences.sidebarCollapsed ? item.label : undefined}
+                      onClick={() => navigate(item.id)}
+                    >
+                      <span aria-hidden="true">{item.icon}</span>
+                      <span className="nav-label">{item.label}</span>
+                    </button>
+                  ))}
+              </div>
+            ))}
+          </nav>
+          <button
+            className="collapse-button"
+            aria-label={state.preferences.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={() =>
+              updateState((current) => ({
+                ...current,
+                preferences: {
+                  ...current.preferences,
+                  sidebarCollapsed: !current.preferences.sidebarCollapsed,
+                },
+              }))
+            }
+          >
+            <span aria-hidden="true">{state.preferences.sidebarCollapsed ? '›' : '‹'}</span>
+            <span className="nav-label">Collapse</span>
+          </button>
+        </aside>
+        <main className="workspace" data-page={page}>
+          {content}
+        </main>
+      </LocalizedRoot>
+    </I18nProvider>
   );
 }

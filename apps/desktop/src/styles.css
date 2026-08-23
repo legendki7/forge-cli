@@ -1,12 +1,5 @@
 :root {
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+  font-family: 'Segoe UI', Tahoma, Arial, system-ui, sans-serif;
   color: var(--text);
   background: var(--canvas);
   color-scheme: light;
@@ -175,6 +168,48 @@ h3 {
   color: var(--text);
   letter-spacing: -0.015em;
 }
+
+:root[dir='rtl'] h1,
+:root[dir='rtl'] h2,
+:root[dir='rtl'] h3 {
+  letter-spacing: normal;
+}
+
+.technical-value,
+code,
+kbd,
+pre,
+samp {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: start;
+}
+
+.technical-value {
+  font-weight: inherit;
+}
+
+.language-panel {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.language-panel select {
+  min-width: 180px;
+}
+
+:root[dir='rtl'] .workspace {
+  text-align: start;
+}
+
+:root[dir='rtl'] input[type='url'],
+:root[dir='rtl'] input[type='number'],
+:root[dir='rtl'] input[placeholder*='C:'],
+:root[dir='rtl'] input[placeholder*='http'] {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: start;
+}
 h1 {
   margin-bottom: 4px;
   font-size: 22px;
@@ -211,7 +246,7 @@ pre {
   width: 184px;
   height: 100vh;
   overflow: hidden;
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   background: var(--sidebar);
   transition: width 140ms ease;
 }
@@ -288,7 +323,7 @@ pre {
   border-color: transparent;
   border-radius: var(--radius-sm);
   background: transparent;
-  text-align: left;
+  text-align: start;
   white-space: nowrap;
 }
 .sidebar nav button > span:first-child,
@@ -444,24 +479,24 @@ small {
 .validation-summary {
   padding: 9px 11px;
   border: 1px solid var(--border);
-  border-left-width: 3px;
+  border-inline-start-width: 3px;
   border-radius: var(--radius);
   background: var(--surface-subtle);
 }
 .notice.info {
-  border-left-color: var(--info);
+  border-inline-start-color: var(--info);
   color: var(--info);
   background: var(--info-soft);
 }
 .notice.success,
 .success-banner,
 .compatibility-banner:not(.conflict) {
-  border-left-color: var(--success);
+  border-inline-start-color: var(--success);
   color: var(--success);
   background: var(--success-soft);
 }
 .notice.warning {
-  border-left-color: var(--warning);
+  border-inline-start-color: var(--warning);
   color: var(--warning);
   background: var(--warning-soft);
 }
@@ -469,7 +504,7 @@ small {
 .error-banner,
 .validation-summary,
 .compatibility-banner.conflict {
-  border-left-color: var(--danger);
+  border-inline-start-color: var(--danger);
   color: var(--danger);
   background: var(--danger-soft);
 }
@@ -509,13 +544,13 @@ small {
   gap: 3px;
   padding: 11px;
   border: 0;
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   border-radius: 0;
   background: transparent;
-  text-align: left;
+  text-align: start;
 }
 .quick-card:last-child {
-  border-right: 0;
+  border-inline-end: 0;
 }
 .quick-card > span {
   color: var(--brand);
@@ -746,7 +781,7 @@ fieldset {
 }
 .advanced-box {
   padding: 10px 12px;
-  border-left: 3px solid var(--brand);
+  border-inline-start: 3px solid var(--brand);
   background: var(--surface-subtle);
 }
 .advanced-box p {
@@ -779,7 +814,7 @@ dd {
   max-height: 200px;
   overflow: auto;
   margin: 6px 0;
-  padding-left: 20px;
+  padding-inline-start: 20px;
 }
 .progress-list {
   display: grid;
@@ -842,7 +877,7 @@ dd {
   display: grid;
   gap: 4px;
   margin: 10px 0;
-  text-align: left;
+  text-align: start;
 }
 .next-steps code,
 .tool-grid code {
@@ -867,7 +902,7 @@ pre,
   background: var(--code-surface);
   font-size: 11px;
   line-height: 1.5;
-  text-align: left;
+  text-align: start;
   white-space: pre-wrap;
 }
 
@@ -912,7 +947,7 @@ pre,
   border-bottom: 1px solid var(--border);
   border-radius: 0;
   background: transparent;
-  text-align: left;
+  text-align: start;
 }
 .template-card:last-child,
 .marketplace-card:last-child {
@@ -935,7 +970,7 @@ pre,
   top: 0;
 }
 .details-panel ul {
-  padding-left: 18px;
+  padding-inline-start: 18px;
 }
 .picker-panel {
   margin-bottom: 12px;
@@ -1099,7 +1134,7 @@ pre,
   border-bottom: 1px solid var(--border);
   border-radius: 0;
   background: transparent;
-  text-align: left;
+  text-align: start;
 }
 .component-card > span {
   display: flex;
@@ -1139,7 +1174,7 @@ pre,
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: 5px;
-  text-align: left;
+  text-align: start;
 }
 .detected-node {
   grid-template-columns: 1fr auto;
@@ -1184,7 +1219,22 @@ pre,
 }
 .service-catalog button {
   display: grid;
-  text-align: left;
+  text-align: start;
+}
+.service-inspector > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.service-inspector code {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 5px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+  white-space: nowrap;
 }
 .service-node {
   position: relative;
@@ -1203,7 +1253,7 @@ pre,
 .service-node > button {
   position: absolute;
   top: 2px;
-  right: 2px;
+  inset-inline-end: 2px;
   min-height: 24px;
   padding: 1px 5px;
   border: 0;
@@ -1250,10 +1300,10 @@ pre,
   max-height: 420px;
   overflow: auto;
   padding: 8px;
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
 }
 .plan-tree button {
-  text-align: left;
+  text-align: start;
 }
 .plan-tree button.selected {
   border-color: var(--brand);
@@ -1289,7 +1339,7 @@ pre,
 .table-scroll td {
   padding: 7px 8px;
   border-bottom: 1px solid var(--border);
-  text-align: left;
+  text-align: start;
   white-space: nowrap;
 }
 .table-scroll th {
@@ -1305,7 +1355,7 @@ pre,
   gap: 3px;
   min-width: 150px;
   padding: 8px;
-  border-left: 2px solid var(--border-strong);
+  border-inline-start: 2px solid var(--border-strong);
   background: var(--surface-subtle);
 }
 .deployment-export .inline-actions input {
@@ -1394,7 +1444,7 @@ pre,
     max-height: 260px;
   }
   .plan-tree {
-    border-right: 0;
+    border-inline-end: 0;
     border-bottom: 1px solid var(--border);
   }
   .stepper li {

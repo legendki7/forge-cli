@@ -353,6 +353,8 @@ telemetry.
 
 تشمل Settings حالياً:
 
+- **اللغة:** `English` أو `العربية`؛ تتحول واجهة Desktop فورًا وتستخدم تخطيط RTL مع
+  العربية. يُحفظ هذا الإعداد محليًا، وتبقى مخرجات CLI بالإنجليزية في هذا الإصدار؛
 - **Appearance:** مظهر System/Light/Dark وطي الشريط الجانبي؛
 - **Project defaults:** مدير الحزم والوجهة وGit وDocker وGitHub Actions ووضع Beginner/Advanced؛
 - **Stack Builder defaults:** الإطار والتنسيق والاختبار وتذكّر آخر Stack وتأكيد المكونات المطلوبة؛

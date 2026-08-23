@@ -367,6 +367,8 @@ There is no cloud history, account synchronization, or telemetry upload.
 
 Settings currently include:
 
+- **Language:** English or العربية; the Desktop interface switches immediately and uses RTL
+  layout in Arabic. This setting is stored locally. CLI output remains English-only;
 - **Appearance:** System/Light/Dark theme and collapsed sidebar;
 - **Project defaults:** package manager, destination, Git, Docker, GitHub Actions, Beginner/Advanced;
 - **Stack Builder defaults:** framework, styling, testing, last-stack memory, required-component

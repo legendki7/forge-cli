@@ -20,6 +20,7 @@ export const MAX_CUSTOM_STACK_PRESETS = 50;
 export const MAX_RECENT_WORKSPACES = 25;
 
 export const defaultPreferences: DesktopPreferences = {
+  language: 'en',
   theme: 'system',
   sidebarCollapsed: false,
   defaultPackageManager: 'pnpm',
@@ -74,6 +75,7 @@ export function migrateDesktopState(value: unknown): PersistedDesktopState {
   return {
     schemaVersion: 3,
     preferences: {
+      language: oneOf(preferences.language, ['en', 'ar'], 'en'),
       theme: oneOf(preferences.theme, ['system', 'light', 'dark'], 'system'),
       sidebarCollapsed: boolean(preferences.sidebarCollapsed, false),
       defaultPackageManager: oneOf(

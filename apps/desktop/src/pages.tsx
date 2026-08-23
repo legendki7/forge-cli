@@ -826,6 +826,23 @@ export function SettingsPage({
         description="Configure ForgeKi Desktop without accounts, cloud services, or telemetry."
       />
       <div className="settings-stack">
+        <section className="panel language-panel">
+          <h2>Language</h2>
+          <label className="field">
+            <span>Display language</span>
+            <select
+              aria-label="Display language"
+              value={preferences.language}
+              onChange={(event) =>
+                update('language', event.target.value as DesktopPreferences['language'])
+              }
+            >
+              <option value="en">English</option>
+              <option value="ar">العربية</option>
+            </select>
+            <small>Changes apply immediately and are saved on this device.</small>
+          </label>
+        </section>
         <section className="panel">
           <h2>Appearance</h2>
           <label className="field">

@@ -179,7 +179,7 @@ collapse preference.
   after the page action is used.
 - **Activity** stores at most 200 concise local entries with event/result filters and confirmed
   clearing. It stores no file contents, secrets, or stack traces.
-- **Settings** controls system/light/dark theme, sidebar, project defaults, Beginner/Advanced mode,
+- **Settings** controls English/Arabic display language, system/light/dark theme, sidebar, project defaults, Beginner/Advanced mode,
   local-history clearing, and reset. It displays the application identity and privacy promises.
 - **Environments** shows Local, Staging, and Production schemas, ownership, secret/public boundaries,
   workspace topology, profile comparison, and drift without showing values.

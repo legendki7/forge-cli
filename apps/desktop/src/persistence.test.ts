@@ -34,6 +34,30 @@ describe('desktop persistence', () => {
     expect(JSON.stringify(state)).not.toContain('npmToken');
   });
 
+  it('defaults, restores, and validates the persisted Desktop language without losing state', () => {
+    expect(createDefaultDesktopState().preferences.language).toBe('en');
+    const arabic = migrateDesktopState({
+      schemaVersion: 2,
+      preferences: { language: 'ar', theme: 'dark' },
+      recentProjects: [
+        {
+          name: 'kept',
+          path: 'C:/projects/kept',
+          framework: 'nextjs',
+          packageManager: 'pnpm',
+          lastActivityAt: '2026-01-01T00:00:00.000Z',
+          activityType: 'created',
+        },
+      ],
+    });
+    expect(arabic.preferences.language).toBe('ar');
+    expect(arabic.preferences.theme).toBe('dark');
+    expect(arabic.recentProjects[0]?.name).toBe('kept');
+    expect(
+      migrateDesktopState({ preferences: { language: 'invalid', theme: 'light' } }).preferences,
+    ).toMatchObject({ language: 'en', theme: 'light' });
+  });
+
   it('bounds and deduplicates recent projects', () => {
     let state = createDefaultDesktopState();
     for (let index = 0; index < MAX_RECENT_PROJECTS + 5; index += 1) {

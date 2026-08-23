@@ -53,8 +53,10 @@ export type NavigationPage =
   | 'settings';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type UserMode = 'beginner' | 'advanced';
+export type DesktopLanguage = 'en' | 'ar';
 
 export interface DesktopPreferences {
+  language: DesktopLanguage;
   theme: ThemePreference;
   sidebarCollapsed: boolean;
   defaultPackageManager: PackageManager;

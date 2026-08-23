@@ -219,6 +219,10 @@ recent projects, and the latest 200 activity entries are stored locally in the T
 data directory. Beginner mode is concise; Advanced mode adds safe metadata, expected scripts, file
 previews, and configuration details without changing validation.
 
+ForgeKi Desktop is available in English and Arabic. Choose **English** or **العربية** in
+Settings; the interface switches immediately, persists locally, and uses full RTL layout for Arabic.
+The `forge` CLI remains English-only in this release.
+
 ```bash
 pnpm desktop:dev
 pnpm desktop:check
