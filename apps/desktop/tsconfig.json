@@ -11,11 +11,20 @@
       "@forgecli7/core/project-name": ["packages/core/src/project-name.ts"],
       "@forgecli7/core/package-managers": ["packages/core/src/package-managers.ts"],
       "@forgecli7/core/stacks": ["packages/core/src/stacks.ts"],
+      "@forgecli7/plugin-sdk": ["packages/plugin-sdk/src/index.ts"],
       "@forgecli7/plugin-docker": ["packages/plugins/plugin-docker/src/index.ts"],
       "@forgecli7/plugin-github-actions": ["packages/plugins/plugin-github-actions/src/index.ts"],
       "@forgecli7/plugins": ["packages/plugins/src/index.ts"],
       "@forgecli7/templates": ["packages/templates/src/index.ts"],
-      "@forgecli7/templates/catalog": ["packages/templates/src/catalog.ts"]
+      "@forgecli7/templates/catalog": ["packages/templates/src/catalog.ts"],
+      "@forgecli7/workspaces": ["packages/workspaces/src/index.ts"],
+      "@forgecli7/workspaces/model": ["packages/workspaces/src/model.ts"],
+      "@forgecli7/workspaces/generation": ["packages/workspaces/src/generation.ts"],
+      "@forgecli7/workspaces/scanner": ["packages/workspaces/src/scanner.ts"],
+      "@forgecli7/deployments": ["packages/deployments/src/index.ts"],
+      "@forgecli7/deployments/browser": ["packages/deployments/src/browser.ts"],
+      "@forgecli7/marketplace": ["packages/marketplace/src/index.ts"],
+      "@forgecli7/marketplace/browser": ["packages/marketplace/src/browser.ts"]
     },
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },

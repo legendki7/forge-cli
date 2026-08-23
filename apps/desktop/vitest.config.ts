@@ -18,6 +18,9 @@ export default defineConfig({
       '@forgecli7/core': fileURLToPath(
         new URL('../../packages/core/src/index.ts', import.meta.url),
       ),
+      '@forgecli7/plugin-sdk': fileURLToPath(
+        new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url),
+      ),
       '@forgecli7/plugin-docker': fileURLToPath(
         new URL('../../packages/plugins/plugin-docker/src/index.ts', import.meta.url),
       ),
