@@ -57,7 +57,7 @@ export function AboutPage({
         title="About ForgeKi"
         description="Version, trust status, updates, and privacy-safe diagnostics."
       />
-      <div className="settings-stack">
+      <div className="settings-stack about-stack">
         <section className="panel about-identity">
           <BrandMark size="about" />
           <div>

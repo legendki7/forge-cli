@@ -7,17 +7,25 @@ const styles = readFileSync(path.join(desktopRoot, 'src', 'styles.css'), 'utf8')
 
 describe('ForgeKi visual identity', () => {
   it.each([
-    '--brand-primary',
-    '--brand-secondary',
-    '--brand-accent',
+    '--brand',
+    '--brand-hover',
+    '--brand-soft',
+    '--canvas',
+    '--sidebar',
     '--surface',
-    '--surface-elevated',
-    '--text-primary',
-    '--text-secondary',
+    '--surface-subtle',
+    '--surface-active',
+    '--text',
+    '--text-muted',
+    '--text-faint',
     '--border',
+    '--border-strong',
     '--success',
     '--warning',
     '--danger',
+    '--radius-sm',
+    '--radius',
+    '--radius-lg',
   ])('defines the %s design token', (token) => {
     expect(styles).toContain(`${token}:`);
   });
@@ -25,7 +33,8 @@ describe('ForgeKi visual identity', () => {
   it('defines explicit brand-aware dark and system themes', () => {
     expect(styles).toContain(":root[data-theme='dark']");
     expect(styles).toContain(":root[data-theme='system']");
-    expect(styles).toContain('--surface: #0b1220');
+    expect(styles).toContain('--canvas: #12161c');
+    expect(styles).toContain('--surface: #1c222c');
   });
 
   it.each(['forgeki-mark.png', 'forgeki-app-icon.png'])('%s is a padded 1024px PNG', (name) => {

@@ -43,21 +43,26 @@ const DeploymentPage = lazy(() =>
   import('./DeploymentPages').then((module) => ({ default: module.DeploymentPage })),
 );
 
-const navigation: readonly { id: NavigationPage; label: string; icon: string }[] = [
-  { id: 'home', label: 'Home', icon: 'H' },
-  { id: 'create', label: 'Create Project', icon: '+' },
-  { id: 'templates', label: 'Templates', icon: 'T' },
-  { id: 'stack-builder', label: 'Stack Builder', icon: 'B' },
-  { id: 'workspace-builder', label: 'Workspace Builder', icon: 'W' },
-  { id: 'environments', label: 'Environments', icon: 'E' },
-  { id: 'deployment', label: 'Deployment', icon: 'R' },
-  { id: 'scan', label: 'Scan Project', icon: 'S' },
-  { id: 'plugins', label: 'Marketplace', icon: 'P' },
-  { id: 'security', label: 'Security', icon: 'X' },
-  { id: 'tools', label: 'Developer Tools', icon: 'D' },
-  { id: 'activity', label: 'Activity', icon: 'A' },
-  { id: 'about', label: 'About', icon: 'I' },
-  { id: 'settings', label: 'Settings', icon: 'G' },
+const navigation: readonly {
+  id: NavigationPage;
+  label: string;
+  icon: string;
+  group: 'Workspace' | 'Operate' | 'System';
+}[] = [
+  { id: 'home', label: 'Home', icon: '⌂', group: 'Workspace' },
+  { id: 'create', label: 'Create Project', icon: '+', group: 'Workspace' },
+  { id: 'templates', label: 'Templates', icon: '◇', group: 'Workspace' },
+  { id: 'stack-builder', label: 'Stack Builder', icon: '▦', group: 'Workspace' },
+  { id: 'workspace-builder', label: 'Workspace Builder', icon: '⌘', group: 'Workspace' },
+  { id: 'scan', label: 'Scan Project', icon: '⌕', group: 'Operate' },
+  { id: 'environments', label: 'Environments', icon: '≡', group: 'Operate' },
+  { id: 'deployment', label: 'Deployment', icon: '↗', group: 'Operate' },
+  { id: 'plugins', label: 'Marketplace', icon: '⬡', group: 'Operate' },
+  { id: 'security', label: 'Security', icon: '◈', group: 'System' },
+  { id: 'tools', label: 'Developer Tools', icon: '⌁', group: 'System' },
+  { id: 'activity', label: 'Activity', icon: '◷', group: 'System' },
+  { id: 'settings', label: 'Settings', icon: '⚙', group: 'System' },
+  { id: 'about', label: 'About', icon: 'i', group: 'System' },
 ];
 
 export function App({ bridge }: { bridge: DesktopBridge }) {
@@ -488,18 +493,25 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
           <strong>ForgeKi</strong>
         </div>
         <nav aria-label="Main navigation">
-          {navigation.map((item) => (
-            <button
-              key={item.id}
-              className={page === item.id ? 'selected' : ''}
-              aria-current={page === item.id ? 'page' : undefined}
-              aria-label={item.label}
-              title={state.preferences.sidebarCollapsed ? item.label : undefined}
-              onClick={() => navigate(item.id)}
-            >
-              <span aria-hidden="true">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
-            </button>
+          {(['Workspace', 'Operate', 'System'] as const).map((group) => (
+            <div className="nav-group" key={group}>
+              <p className="nav-group-label">{group}</p>
+              {navigation
+                .filter((item) => item.group === group)
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    className={page === item.id ? 'selected' : ''}
+                    aria-current={page === item.id ? 'page' : undefined}
+                    aria-label={item.label}
+                    title={state.preferences.sidebarCollapsed ? item.label : undefined}
+                    onClick={() => navigate(item.id)}
+                  >
+                    <span aria-hidden="true">{item.icon}</span>
+                    <span className="nav-label">{item.label}</span>
+                  </button>
+                ))}
+            </div>
           ))}
         </nav>
         <button
