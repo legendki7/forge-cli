@@ -2,8 +2,9 @@
 
 ## Supported versions
 
-Before the first stable release, only the latest published beta is eligible for security fixes.
-Older prereleases may be unsupported. This policy will be updated when stable release lines exist.
+No public release exists yet. Until the first beta is published, security fixes apply to the latest
+commit on `main`. After publication, only the latest beta will be eligible for fixes; older
+prereleases may be unsupported. This policy will be updated when stable release lines exist.
 
 ## Reporting a vulnerability
 

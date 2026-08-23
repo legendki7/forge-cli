@@ -5,19 +5,12 @@ labels: ['bug']
 body:
   - type: markdown
     attributes:
-      value: Please search existing issues. Never include tokens, credentials, environment values, or unsanitized private logs.
+      value: Please search existing issues. Never include tokens, credentials, environment values, private project content, or unsanitized logs.
   - type: input
     id: version
     attributes:
       label: ForgeKi version
-      placeholder: Output of forge --version
-    validations:
-      required: true
-  - type: input
-    id: environment
-    attributes:
-      label: Environment
-      placeholder: OS, Node.js version, and package manager
+      placeholder: Desktop About version, forge --version, or local commit
     validations:
       required: true
   - type: dropdown
@@ -30,21 +23,33 @@ body:
     validations:
       required: true
   - type: input
-    id: architecture
+    id: os
     attributes:
-      label: Architecture
-      placeholder: x64, arm64, or unknown
+      label: Operating system
+      placeholder: Windows 11 x64, macOS 15 arm64, Ubuntu 24.04 x64
     validations:
       required: true
   - type: textarea
-    id: sanitized-logs
+    id: steps
     attributes:
-      label: Sanitized diagnostics or logs
-      description: Preview ForgeKi diagnostics first. Remove usernames, paths, project names, environment values, and secrets.
-  - type: textarea
-    id: reproduction
-    attributes:
-      label: Reproduction
-      description: Include the command, expected result, and actual result.
+      label: Steps to reproduce
+      description: Provide the smallest safe sequence that consistently demonstrates the problem.
     validations:
       required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Preview diagnostics first. Remove usernames, absolute paths, project names, environment values, credentials, and secrets.

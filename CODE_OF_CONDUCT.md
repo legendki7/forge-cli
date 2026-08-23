@@ -10,6 +10,6 @@ and publishing another person's private information are unacceptable.
 Maintainers may edit or remove contributions or participation that violate these expectations and
 may temporarily or permanently restrict participation when necessary.
 
-Report conduct concerns privately to the repository maintainers. Until repository ownership is
-finalized, use a private contact method listed by the eventual GitHub organization rather than a
-public issue. Maintainers will review reports promptly and protect reporter privacy where possible.
+Report conduct concerns privately to the repository maintainers using a private contact method shown
+on the repository owner's GitHub profile, rather than a public issue. Do not include sensitive details
+until a private channel is confirmed. Maintainers will protect reporter privacy where possible.

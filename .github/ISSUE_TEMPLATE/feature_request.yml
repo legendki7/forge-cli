@@ -7,13 +7,27 @@ body:
     id: problem
     attributes:
       label: Problem
-      description: What workflow or limitation should ForgeKi address?
+      description: What specific workflow or limitation should ForgeKi address, and who experiences it?
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
       label: Proposed behavior
-      description: Describe the desired CLI behavior and alternatives considered.
+      description: Describe the smallest useful behavior and its expected outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What existing workflow or smaller alternative did you consider?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and boundaries
+      description: Which Desktop, CLI, package, plugin, or documentation area is affected? Note what should remain out of scope.
     validations:
       required: true

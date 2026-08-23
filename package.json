@@ -2,7 +2,7 @@
   "name": "forgeki-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "A modular CLI foundation for scaffolding and configuring development projects.",
+  "description": "Open-source local-first Desktop and CLI tools for deterministic project, stack, and workspace generation.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -23,6 +23,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "docs:check": "node scripts/check-markdown-links.mjs",
     "test": "vitest run && pnpm --filter @forgeki/desktop test",
     "test:watch": "vitest",
     "desktop:dev": "pnpm --filter @forgeki/desktop tauri:dev",

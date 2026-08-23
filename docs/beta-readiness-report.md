@@ -1,6 +1,6 @@
 # ForgeKi public Beta readiness report
 
-**Generated:** 2026-08-16T12:39:44.065Z
+**Generated:** 2026-08-23T11:44:11.376Z
 
 **Final status:** Technically ready; blocked by owner configuration
 
@@ -8,7 +8,7 @@
 
 - Intended Desktop/CLI Beta version: `0.2.0-beta.0`
 - Channel: `beta` (npm dist-tag `beta`, never `latest`)
-- Commit: `2d5df52c1349b58bd300297e3d598596b270bbc9`
+- Commit: `946fbbce736e8a387aa3c11c3f8314fab0145930`
 - Public packages: 10
 - Windows native platform: validated by the local release dry run
 - npm authentication: Unavailable — owner must run `npm login` or configure Trusted Publishing
@@ -31,14 +31,14 @@
 
 | Artifact                             |      Size |
 | ------------------------------------ | --------: |
-| `ForgeKi_0.2.0-beta.0_x64_en-US.msi` | 26.36 MiB |
-| `ForgeKi_0.2.0-beta.0_x64-setup.exe` | 18.62 MiB |
+| `ForgeKi_0.2.0-beta.0_x64_en-US.msi` | 26.38 MiB |
+| `ForgeKi_0.2.0-beta.0_x64-setup.exe` | 18.63 MiB |
 | `forgeki-sbom.cdx.json`              |  0.07 MiB |
 | `THIRD_PARTY_NOTICES.md`             |  0.00 MiB |
 
 - Primary public installer: NSIS `ForgeKi_<version>_x64-setup.exe`
 - Optional enterprise installer: MSI `ForgeKi_<version>_x64_en-US.msi`
-- Installed core payload: 71.24 MiB (application 15.85 MiB + bundled worker/runtime 55.39 MiB); filesystem/installer overhead is excluded
+- Installed core payload: 71.25 MiB (application 15.86 MiB + bundled worker/runtime 55.39 MiB); filesystem/installer overhead is excluded
 - Largest required bundled file: worker/runtime at 55.39 MiB
 - Internal worker binaries: bundled only; excluded from the GitHub asset plan
 - Release manifest/checksums: generated from actual staged bytes

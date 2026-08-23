@@ -1,6 +1,6 @@
 # ForgeKi release-candidate report
 
-**Audit date:** 2026-08-16
+**Audit date:** 2026-08-23
 
 **Final status:** Ready for beta publication pending npm scope ownership and authentication
 

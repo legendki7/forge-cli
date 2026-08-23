@@ -1,6 +1,10 @@
 # Architecture
 
-Phase 5 adds `@forgecli7/deployments` as the shared environment/deployment domain. It owns portable environment schemas, target compatibility, readiness, exact deterministic file plans, fingerprints, non-overwriting export, and drift scanning. CLI and Desktop are adapters. The Desktop worker rescans and recomputes every reviewed plan before export behind a native selected-directory boundary.
+`@forgecli7/deployments` is the shared environment and deployment-configuration domain. It owns
+portable environment schemas, target compatibility, readiness, deterministic file plans,
+fingerprints, non-overwriting export, and drift scanning. CLI and Desktop are adapters. The Desktop
+worker rescans and recomputes every reviewed plan before export behind a native selected-directory
+boundary.
 
 ForgeKi is organized as a pnpm monorepo. Each package owns one concern and publishes a deliberately
 small public API.
