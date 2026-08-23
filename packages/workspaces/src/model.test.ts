@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BUILTIN_WORKSPACE_PRESETS,
   createWorkspaceConnection,
@@ -9,6 +9,8 @@ import {
 } from './model.js';
 
 describe('workspace model', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it('validates every built-in preset with deterministic non-conflicting ports', () => {
     for (const preset of BUILTIN_WORKSPACE_PRESETS) {
       const result = validateWorkspace(preset.definition);
@@ -105,5 +107,12 @@ describe('workspace model', () => {
 
   it('rejects oversized workspace input before parsing fields', () => {
     expect(() => parseWorkspaceDefinition({ padding: 'x'.repeat(300_000) })).toThrow(/too large/u);
+  });
+
+  it('parses a valid workspace in browser runtimes without the Node Buffer global', () => {
+    vi.stubGlobal('Buffer', undefined);
+    expect(parseWorkspaceDefinition(BUILTIN_WORKSPACE_PRESETS[0]!.definition)).toEqual(
+      BUILTIN_WORKSPACE_PRESETS[0]!.definition,
+    );
   });
 });

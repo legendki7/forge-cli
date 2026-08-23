@@ -13,6 +13,7 @@ import { MarketplacePage } from './Marketplace';
 import { SecurityPage } from './SecurityPage';
 import { AboutPage } from './AboutPage';
 import { BrandMark } from './BrandMark';
+import { PageErrorBoundary } from './PageErrorBoundary';
 import type { PluginCatalogEntry } from '@forgecli7/plugins';
 import {
   addActivity,
@@ -319,83 +320,85 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
         );
       case 'workspace-builder':
         return (
-          <Suspense fallback={<p className="loading-state">Loading Workspace Builder…</p>}>
-            <WorkspaceBuilderPage
-              bridge={bridge}
-              initialWorkspace={state.lastWorkspace}
-              customPresets={state.customWorkspacePresets}
-              onWorkspaceChange={(lastWorkspace) =>
-                updateState((current) => ({ ...current, lastWorkspace }))
-              }
-              onPresetsChange={(customWorkspacePresets) =>
-                updateState((current) => ({ ...current, customWorkspacePresets }))
-              }
-              onCreated={(path, workspace) => {
-                const now = new Date().toISOString();
-                updateState((current) => ({
-                  ...addActivity(current, {
-                    id: `${Date.now()}-workspace-created`,
-                    type: 'workspace-generated',
-                    projectName: workspace.name,
-                    projectPath: path,
-                    timestamp: now,
-                    result: 'success',
-                    message: 'Workspace generated successfully.',
-                  }),
-                  recentWorkspaces: [
-                    {
-                      name: workspace.name,
-                      path,
-                      serviceCount: workspace.services.length,
-                      lastActivityAt: now,
-                      activityType: 'created' as const,
-                      frameworks: workspace.services
-                        .filter((service) => service.type === 'web' || service.type === 'api')
-                        .map((service) => service.implementation),
-                      database: workspace.services.find((service) => service.type === 'database')
-                        ?.implementation,
-                      infrastructure: workspace.services
-                        .filter((service) => service.type === 'infrastructure')
-                        .map((service) => service.implementation),
-                    },
-                    ...current.recentWorkspaces.filter((item) => item.path !== path),
-                  ].slice(0, 25),
-                }));
-              }}
-              onScanned={(path, workspace) => {
-                const now = new Date().toISOString();
-                updateState((current) => ({
-                  ...addActivity(current, {
-                    id: `${Date.now()}-workspace-scanned`,
-                    type: 'workspace-scanned',
-                    projectName: workspace.name,
-                    projectPath: path,
-                    timestamp: now,
-                    result: 'success',
-                    message: 'Workspace imported read-only.',
-                  }),
-                  recentWorkspaces: [
-                    {
-                      name: workspace.name,
-                      path,
-                      serviceCount: workspace.services.length,
-                      lastActivityAt: now,
-                      activityType: 'scanned' as const,
-                      frameworks: workspace.services
-                        .filter((service) => service.type === 'web' || service.type === 'api')
-                        .map((service) => service.implementation),
-                      database: workspace.services.find((service) => service.type === 'database')
-                        ?.implementation,
-                      infrastructure: workspace.services
-                        .filter((service) => service.type === 'infrastructure')
-                        .map((service) => service.implementation),
-                    },
-                    ...current.recentWorkspaces.filter((item) => item.path !== path),
-                  ].slice(0, 25),
-                }));
-              }}
-            />
-          </Suspense>
+          <PageErrorBoundary pageName="Workspace Builder" onLeave={() => setPage('home')}>
+            <Suspense fallback={<p className="loading-state">Loading Workspace Builder…</p>}>
+              <WorkspaceBuilderPage
+                bridge={bridge}
+                initialWorkspace={state.lastWorkspace}
+                customPresets={state.customWorkspacePresets}
+                onWorkspaceChange={(lastWorkspace) =>
+                  updateState((current) => ({ ...current, lastWorkspace }))
+                }
+                onPresetsChange={(customWorkspacePresets) =>
+                  updateState((current) => ({ ...current, customWorkspacePresets }))
+                }
+                onCreated={(path, workspace) => {
+                  const now = new Date().toISOString();
+                  updateState((current) => ({
+                    ...addActivity(current, {
+                      id: `${Date.now()}-workspace-created`,
+                      type: 'workspace-generated',
+                      projectName: workspace.name,
+                      projectPath: path,
+                      timestamp: now,
+                      result: 'success',
+                      message: 'Workspace generated successfully.',
+                    }),
+                    recentWorkspaces: [
+                      {
+                        name: workspace.name,
+                        path,
+                        serviceCount: workspace.services.length,
+                        lastActivityAt: now,
+                        activityType: 'created' as const,
+                        frameworks: workspace.services
+                          .filter((service) => service.type === 'web' || service.type === 'api')
+                          .map((service) => service.implementation),
+                        database: workspace.services.find((service) => service.type === 'database')
+                          ?.implementation,
+                        infrastructure: workspace.services
+                          .filter((service) => service.type === 'infrastructure')
+                          .map((service) => service.implementation),
+                      },
+                      ...current.recentWorkspaces.filter((item) => item.path !== path),
+                    ].slice(0, 25),
+                  }));
+                }}
+                onScanned={(path, workspace) => {
+                  const now = new Date().toISOString();
+                  updateState((current) => ({
+                    ...addActivity(current, {
+                      id: `${Date.now()}-workspace-scanned`,
+                      type: 'workspace-scanned',
+                      projectName: workspace.name,
+                      projectPath: path,
+                      timestamp: now,
+                      result: 'success',
+                      message: 'Workspace imported read-only.',
+                    }),
+                    recentWorkspaces: [
+                      {
+                        name: workspace.name,
+                        path,
+                        serviceCount: workspace.services.length,
+                        lastActivityAt: now,
+                        activityType: 'scanned' as const,
+                        frameworks: workspace.services
+                          .filter((service) => service.type === 'web' || service.type === 'api')
+                          .map((service) => service.implementation),
+                        database: workspace.services.find((service) => service.type === 'database')
+                          ?.implementation,
+                        infrastructure: workspace.services
+                          .filter((service) => service.type === 'infrastructure')
+                          .map((service) => service.implementation),
+                      },
+                      ...current.recentWorkspaces.filter((item) => item.path !== path),
+                    ].slice(0, 25),
+                  }));
+                }}
+              />
+            </Suspense>
+          </PageErrorBoundary>
         );
       case 'scan':
         return (

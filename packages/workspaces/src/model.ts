@@ -902,7 +902,7 @@ function assertKeys(value: Record<string, unknown>, allowed: readonly string[]):
 
 function byteLength(value: unknown): number {
   try {
-    return Buffer.byteLength(JSON.stringify(value), 'utf8');
+    return new TextEncoder().encode(JSON.stringify(value)).byteLength;
   } catch {
     return Number.POSITIVE_INFINITY;
   }

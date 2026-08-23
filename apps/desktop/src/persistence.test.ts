@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { BUILTIN_WORKSPACE_PRESETS } from '@forgecli7/workspaces/model';
 import {
   MAX_ACTIVITY_ENTRIES,
   MAX_CUSTOM_STACK_PRESETS,
@@ -12,6 +13,8 @@ import {
 } from './persistence';
 
 describe('desktop persistence', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it('loads safe defaults and recovers corrupted data', () => {
     expect(migrateDesktopState('broken')).toEqual(createDefaultDesktopState());
     expect(
@@ -130,5 +133,35 @@ describe('desktop persistence', () => {
     expect(migrated.customStackPresets.some(({ id }) => id === 'preset--1')).toBe(false);
     expect(JSON.stringify(migrated)).not.toContain('must-not-survive');
     expect(JSON.stringify(migrated)).not.toContain(`npm_${'a'.repeat(26)}`);
+  });
+
+  it('restores schema-v2 workspace state in the browser and drops only corrupted definitions', () => {
+    vi.stubGlobal('Buffer', undefined);
+    const definition = BUILTIN_WORKSPACE_PRESETS[0]!.definition;
+    const migrated = migrateDesktopState({
+      schemaVersion: 2,
+      lastWorkspace: definition,
+      customWorkspacePresets: [
+        {
+          schemaVersion: 1,
+          id: 'valid-workspace',
+          name: 'Valid workspace',
+          description: 'Local preset',
+          definition,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          schemaVersion: 1,
+          id: 'broken-workspace',
+          name: 'Broken workspace',
+          definition: { schemaVersion: 1, services: 'invalid' },
+        },
+      ],
+    });
+
+    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.lastWorkspace).toEqual(definition);
+    expect(migrated.customWorkspacePresets.map(({ id }) => id)).toEqual(['valid-workspace']);
   });
 });

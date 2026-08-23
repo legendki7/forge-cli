@@ -36,6 +36,8 @@ function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
     createProject: vi.fn().mockResolvedValue(result),
     planStack: vi.fn(),
     createStack: vi.fn().mockResolvedValue(result),
+    planWorkspace: vi.fn(),
+    scanWorkspace: vi.fn(),
     scanProject: vi.fn().mockResolvedValue(scan),
     inspectBuiltinPlugins: vi.fn().mockResolvedValue([]),
     applyBuiltinPlugin: vi.fn(),
@@ -107,6 +109,22 @@ describe('desktop application shell', () => {
     expect(
       await screen.findByRole('heading', { name: 'Stack Builder' }, { timeout: 10_000 }),
     ).toBeVisible();
+  });
+
+  it('opens Workspace Builder repeatedly without startup bridge work', async () => {
+    const api = bridge();
+    render(<App bridge={api} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Workspace Builder' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Workspace Builder' }, { timeout: 10_000 }),
+    ).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Home' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Workspace Builder' }));
+    expect(await screen.findByRole('heading', { name: 'Workspace Builder' })).toBeVisible();
+    expect(api.selectDestination).not.toHaveBeenCalled();
+    expect(api.planWorkspace).not.toHaveBeenCalled();
+    expect(api.scanWorkspace).not.toHaveBeenCalled();
   });
 });
 
