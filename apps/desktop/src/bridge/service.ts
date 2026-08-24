@@ -837,6 +837,9 @@ function reportPlugin(
 function publicError(error: unknown): { code: string; message: string; details?: string } {
   if (error instanceof CreateProjectError) return { code: error.code, message: error.message };
   const message = error instanceof Error ? error.message : 'Unexpected project creation error.';
+  if (message === 'Invalid desktop bridge payload.') {
+    return { code: 'INVALID_PAYLOAD', message: 'The desktop bridge request was invalid.' };
+  }
   return {
     code: 'UNEXPECTED_ERROR',
     message: 'Project creation failed unexpectedly.',

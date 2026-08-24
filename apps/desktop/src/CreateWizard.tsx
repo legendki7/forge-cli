@@ -479,6 +479,8 @@ function userMessage(cause: unknown): string {
     return 'ForgeKi does not have permission to create files in that location.';
   if (/unsafe|symbolic|traversal/iu.test(message))
     return 'The selected project path is not safe to use.';
+  if (/INVALID_PAYLOAD|bridge request was invalid/iu.test(message))
+    return 'ForgeKi could not process the project request.';
   if (/bridge|sidecar|worker/iu.test(message))
     return 'ForgeKi could not communicate with its local project service.';
   return 'An unexpected project creation error occurred.';

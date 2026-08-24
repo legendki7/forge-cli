@@ -44,6 +44,21 @@ describe('desktop worker security boundary', () => {
     ).toThrow();
   });
 
+  it('classifies null optional bridge fields as a safe invalid-payload error', async () => {
+    const messages: WorkerMessage[] = [];
+    await handleWorkerEnvelope(
+      {
+        operationId: 'invalid-native-wire-payload',
+        request: { ...request(absoluteTestDirectory), stack: null, generationPlan: null },
+      },
+      (message) => messages.push(message),
+    );
+    expect(messages.at(-1)).toEqual({
+      type: 'error',
+      payload: { code: 'INVALID_PAYLOAD', message: 'The desktop bridge request was invalid.' },
+    });
+  });
+
   it('rejects unselected relative destinations', () => {
     expect(() => validateRequest(request('../escape'))).toThrow('selected absolute destination');
   });
@@ -149,7 +164,7 @@ describe('desktop worker security boundary', () => {
     );
     expect(messages.at(-1)).toMatchObject({
       type: 'error',
-      payload: { code: 'UNEXPECTED_ERROR' },
+      payload: { code: 'INVALID_PAYLOAD' },
     });
   });
 

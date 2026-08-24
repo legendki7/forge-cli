@@ -33,6 +33,18 @@ if (!/^repository = "https:\/\/github\.com\/legendki7\/forge-cli"$/mu.test(cargo
 if (!config.bundle?.externalBin?.includes('binaries/forgeki-worker')) {
   failures.push('the fixed ForgeKi worker sidecar must be bundled.');
 }
+if (
+  packageMetadata.scripts?.['build:dependencies'] !==
+  'pnpm -r --filter "@forgeki/desktop..." --filter "!@forgeki/desktop" --sort build'
+) {
+  failures.push('the Desktop dependency closure must be built explicitly.');
+}
+if (
+  packageMetadata.scripts?.['tauri:build'] !==
+  'pnpm build:dependencies && pnpm build:sidecar && node scripts/build-native.mjs'
+) {
+  failures.push('the production build must refresh dependencies and the sidecar before Tauri.');
+}
 if (config.bundle?.windows?.nsis?.installerIcon !== 'icons/icon.ico') {
   failures.push('the NSIS installer must use the official ForgeKi icon.');
 }

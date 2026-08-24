@@ -206,6 +206,8 @@ export const en = {
   'The native folder picker could not be opened.': 'The native folder picker could not be opened.',
   'ForgeKi could not communicate with its local project service.':
     'ForgeKi could not communicate with its local project service.',
+  'ForgeKi could not process the project request.':
+    'ForgeKi could not process the project request.',
   'An unexpected project creation error occurred.':
     'An unexpected project creation error occurred.',
   'Sanitized technical details': 'Sanitized technical details',

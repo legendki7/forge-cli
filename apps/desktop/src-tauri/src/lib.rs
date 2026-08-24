@@ -36,9 +36,9 @@ struct CreateRequest {
     add_docker: bool,
     #[serde(rename = "addGitHubActions")]
     add_github_actions: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     stack: Option<Value>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     generation_plan: Option<Value>,
 }
 
@@ -628,13 +628,19 @@ async fn run_worker(
     let sidecar = app
         .shell()
         .sidecar("forgeki-worker")
-        .map_err(|_| "The bundled ForgeKi worker is unavailable.".to_string())?;
+        .map_err(|_| {
+            "WORKER_NOT_FOUND: The bundled ForgeKi worker is unavailable.".to_string()
+        })?;
     let (mut events, mut child) = sidecar
         .spawn()
-        .map_err(|_| "The bundled ForgeKi worker could not be started.".to_string())?;
+        .map_err(|_| {
+            "WORKER_START_FAILED: The bundled ForgeKi worker could not be started.".to_string()
+        })?;
     child
         .write(format!("{input}\n").as_bytes())
-        .map_err(|_| "ForgeKi could not send the request to its worker.".to_string())?;
+        .map_err(|_| {
+            "WORKER_WRITE_FAILED: ForgeKi could not send the request to its worker.".to_string()
+        })?;
 
     let mut stdout = String::new();
     let mut stderr = String::new();
@@ -642,7 +648,10 @@ async fn run_worker(
         match event {
             CommandEvent::Stdout(bytes) => {
                 if stdout.len() + bytes.len() > MAX_WORKER_OUTPUT {
-                    return Err("The ForgeKi worker returned too much output.".into());
+                    return Err(
+                        "WORKER_OUTPUT_TOO_LARGE: The ForgeKi worker returned too much output."
+                            .into(),
+                    );
                 }
                 stdout.push_str(&String::from_utf8_lossy(&bytes));
                 while let Some(index) = stdout.find('\n') {
@@ -667,7 +676,10 @@ async fn run_worker(
                         }
                         Ok(WorkerMessage::Error(error)) => return Err(worker_error(error)),
                         Err(_) => {
-                            return Err("The ForgeKi worker returned an invalid response.".into())
+                            return Err(
+                                "WORKER_INVALID_RESPONSE: The ForgeKi worker returned an invalid response."
+                                    .into(),
+                            )
                         }
                     }
                 }
@@ -679,7 +691,10 @@ async fn run_worker(
                 }
             }
             CommandEvent::Error(_) => {
-                return Err("The ForgeKi worker encountered a communication error.".into())
+                return Err(
+                    "WORKER_COMMUNICATION_ERROR: The ForgeKi worker encountered a communication error."
+                        .into(),
+                )
             }
             CommandEvent::Terminated(_) => break,
             _ => {}
@@ -687,10 +702,12 @@ async fn run_worker(
     }
     let details = sanitize(&stderr);
     if details.is_empty() {
-        Err("The ForgeKi worker stopped before the operation completed.".into())
+        Err(
+            "WORKER_EXITED: The ForgeKi worker stopped before the operation completed.".into(),
+        )
     } else {
         Err(format!(
-            "The ForgeKi worker stopped unexpectedly: {details}"
+            "WORKER_EXITED: The ForgeKi worker stopped unexpectedly ({details})"
         ))
     }
 }
@@ -1140,6 +1157,16 @@ mod tests {
         assert!(request.add_github_actions);
         assert_eq!(request.template_id, "nextjs-dashboard");
         validate_create_request(&request).expect("request should be valid");
+        let worker_request = serde_json::to_value(&request).expect("request should serialize");
+        assert_eq!(
+            worker_request.get("addGitHubActions"),
+            Some(&serde_json::Value::Bool(true))
+        );
+        assert!(!worker_request.as_object().unwrap().contains_key("stack"));
+        assert!(!worker_request
+            .as_object()
+            .unwrap()
+            .contains_key("generationPlan"));
     }
 
     #[test]

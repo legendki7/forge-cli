@@ -13,10 +13,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && pnpm build:worker",
+    "build:dependencies": "pnpm -r --filter \"@forgeki/desktop...\" --filter \"!@forgeki/desktop\" --sort build",
     "build:worker": "tsup --config tsup.worker.config.ts",
     "build:sidecar": "pnpm build:worker && node scripts/build-sidecar.mjs",
     "tauri:dev": "tauri dev",
-    "tauri:build": "pnpm build:sidecar && node scripts/build-native.mjs",
+    "tauri:build": "pnpm build:dependencies && pnpm build:sidecar && node scripts/build-native.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src vite.config.ts vitest.config.ts scripts",
     "test": "vitest run --config vitest.config.ts",

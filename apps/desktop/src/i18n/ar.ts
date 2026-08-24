@@ -206,6 +206,7 @@ export const ar = {
   'The native folder picker could not be opened.': 'تعذر فتح منتقي المجلدات الأصلي.',
   'ForgeKi could not communicate with its local project service.':
     'تعذر على ForgeKi الاتصال بخدمة المشروع المحلية.',
+  'ForgeKi could not process the project request.': 'تعذر على ForgeKi معالجة طلب إنشاء المشروع.',
   'An unexpected project creation error occurred.': 'حدث خطأ غير متوقع أثناء إنشاء المشروع.',
   'Sanitized technical details': 'تفاصيل تقنية منقحة',
   'Visual architecture': 'معمارية بصرية',

@@ -196,6 +196,25 @@ describe('creation wizard', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('permission');
     expect(screen.queryByText(/npm_aaaa/u)).not.toBeInTheDocument();
   });
+
+  it('distinguishes an invalid native request from a worker communication failure', async () => {
+    const api = bridge({
+      createProject: vi
+        .fn()
+        .mockRejectedValue(new Error('INVALID_PAYLOAD: The desktop bridge request was invalid.')),
+    });
+    render(<App bridge={api} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+    await userEvent.type(screen.getByLabelText('Project name'), 'my-app');
+    await userEvent.click(screen.getByRole('button', { name: 'Choose folder' }));
+    for (let index = 0; index < 3; index += 1)
+      await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm and create' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'ForgeKi could not process the project request.',
+    );
+    expect(screen.getByText('Sanitized technical details')).toBeVisible();
+  });
 });
 
 describe('stored desktop state', () => {
