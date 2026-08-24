@@ -67,6 +67,10 @@ export async function validatePackedInstallation(root, archives, dependencies = 
         const output = invoke(args);
         if (!output.includes('Usage:')) throw new Error(`Packed forge ${args.join(' ')} failed.`);
       }
+      const stacks = invoke(['stacks', 'list']);
+      if (!stacks.includes('Built-in ForgeKi stacks')) {
+        throw new Error('Packed forge stacks list failed.');
+      }
 
       await validatePublicImports(installationDirectory, dependencies.run ?? run);
 

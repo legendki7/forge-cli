@@ -31,7 +31,7 @@
     "desktop:build": "pnpm --filter @forgeki/desktop tauri:build",
     "desktop:check": "pnpm format:check && pnpm --filter @forgeki/desktop check",
     "marketplace:validate": "vitest run packages/marketplace/src",
-    "marketplace:build": "pnpm --filter @forgecli7/marketplace build",
+    "marketplace:build": "pnpm -r --filter @forgecli7/marketplace... --sort build",
     "marketplace:verify": "pnpm marketplace:validate && pnpm marketplace:build",
     "marketplace:sign": "pnpm marketplace:build && node scripts/marketplace-sign.mjs",
     "release": "pnpm release:inspect",

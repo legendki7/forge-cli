@@ -1,7 +1,8 @@
-import { pathToFileURL } from 'node:url';
+import { isDirectExecution } from './direct-execution.js';
 import { runCli } from './run.js';
 
 export { createProgram } from './program.js';
+export { isDirectExecution } from './direct-execution.js';
 export { readCliPackageMetadata } from './package-metadata.js';
 export { runCli } from './run.js';
 export { validateNodeRuntime } from './runtime.js';
@@ -14,10 +15,6 @@ export type {
   SelectPromptOptions,
 } from './prompts.js';
 
-const isDirectExecution = process.argv[1]
-  ? import.meta.url === pathToFileURL(process.argv[1]).href
-  : false;
-
-if (isDirectExecution) {
+if (isDirectExecution(import.meta.url)) {
   process.exitCode = await runCli();
 }

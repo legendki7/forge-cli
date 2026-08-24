@@ -41,4 +41,16 @@ describe('protected Phase 7 workflows', () => {
     expect(revocation).toContain('verify-signed-marketplace.mjs');
     expect(revocation).toContain('nothing was published automatically');
   });
+
+  it('verifies Marketplace clean builds across the supported Node.js matrix', () => {
+    const content = workflow('ci.yml');
+    expect(content).toContain('node: [20, 22, 24]');
+    expect(content).toContain('run: pnpm marketplace:verify');
+    expect(content).not.toContain('if: matrix.node == 22');
+
+    const metadata = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+    expect(metadata.scripts['marketplace:build']).toBe(
+      'pnpm -r --filter @forgecli7/marketplace... --sort build',
+    );
+  });
 });
