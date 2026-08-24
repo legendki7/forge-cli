@@ -1,6 +1,6 @@
 {
   "name": "@forgecli7/plugin-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Types and validators for ForgeKi restricted declarative plugins.",
   "keywords": [
     "forgeki",

@@ -1,6 +1,6 @@
 {
   "name": "@forgecli7/workspaces",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Typed, deterministic multi-service workspace planning and generation for ForgeKi.",
   "keywords": [
     "forgeki",

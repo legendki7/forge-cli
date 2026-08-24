@@ -1,6 +1,6 @@
 {
   "name": "@forgecli7/plugin-docker",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Docker configuration plugin for ForgeKi.",
   "author": "ForgeKi contributors",
   "repository": {

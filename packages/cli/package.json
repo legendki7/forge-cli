@@ -1,6 +1,6 @@
 {
   "name": "@forgecli7/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "An extensible CLI for safely scaffolding and configuring development projects.",
   "keywords": [
     "cli",

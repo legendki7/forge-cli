@@ -1,6 +1,6 @@
 {
   "name": "@forgecli7/marketplace",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Trusted Marketplace protocol, package verification, and secure update foundations for ForgeKi.",
   "author": "ForgeKi contributors",
   "license": "MIT",
