@@ -3,6 +3,13 @@ name: Changesets release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      create_release_pr:
+        description: Create or update the Changesets release pull request
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -27,7 +34,7 @@ jobs:
 
   release-pr:
     name: Create or update release pull request
-    if: github.event_name == 'push' && github.repository_owner != ''
+    if: github.event_name == 'workflow_dispatch' && inputs.create_release_pr
     needs: validate
     runs-on: ubuntu-latest
     permissions:

@@ -32,6 +32,18 @@ describe('protected Phase 7 workflows', () => {
     expect(content).not.toMatch(/npm publish|changeset publish|gh release create/iu);
   });
 
+  it('validates releases on every push but requires manual approval for a release PR', () => {
+    const content = workflow('release.yml');
+    expect(content).toContain('push:');
+    expect(content).toContain('name: Validate release contents');
+    expect(content).toContain('workflow_dispatch:');
+    expect(content).toContain('create_release_pr:');
+    expect(content).toContain(
+      "if: github.event_name == 'workflow_dispatch' && inputs.create_release_pr",
+    );
+    expect(content).not.toContain("if: github.event_name == 'push'");
+  });
+
   it('fails Marketplace publication closed and self-verifies emergency revocations', () => {
     const marketplace = workflow('marketplace-publish.yml');
     expect(marketplace).toContain('marketplace-production-guard.mjs');
