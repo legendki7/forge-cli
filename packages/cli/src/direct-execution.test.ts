@@ -7,8 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { isDirectExecution } from './direct-execution.js';
 
 const root = path.resolve(import.meta.dirname, '../../..');
-const entrypoint = path.join(root, 'packages/cli/src/index.ts');
-const tsxCli = path.join(root, 'packages/cli/node_modules/tsx/dist/cli.mjs');
+const entrypoint = path.join(root, 'packages/cli/dist/index.js');
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
@@ -28,7 +27,7 @@ describe('CLI direct execution', () => {
     expect(isDirectExecution(pathToFileURL(entrypoint).href, undefined)).toBe(false);
   });
 
-  it('executes the TypeScript entrypoint directly', () => {
+  it('executes the built CLI entrypoint directly', () => {
     const result = invokeNode([entrypoint, '--version']);
     expect(result.status).toBe(0);
     expect(result.stdout.trim()).toBe('0.1.0');
@@ -49,7 +48,7 @@ describe('CLI direct execution', () => {
     'executes through a filesystem symlink',
     async () => {
       const directory = await createTemporaryDirectory();
-      const linkedEntrypoint = path.join(directory, 'forge.ts');
+      const linkedEntrypoint = path.join(directory, 'forge');
       await symlink(entrypoint, linkedEntrypoint, 'file');
 
       expect(isDirectExecution(pathToFileURL(entrypoint).href, linkedEntrypoint)).toBe(true);
@@ -68,8 +67,7 @@ async function createTemporaryDirectory(): Promise<string> {
 }
 
 function invokeNode(args: string[]) {
-  const processArgs = [tsxCli, ...args];
-  const result = spawnSync(process.execPath, processArgs, {
+  const result = spawnSync(process.execPath, args, {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, FORCE_COLOR: '0' },
@@ -81,7 +79,7 @@ function invokeNode(args: string[]) {
       [
         'CLI subprocess failed.',
         `Executable: ${process.execPath}`,
-        `Arguments: ${JSON.stringify(processArgs)}`,
+        `Arguments: ${JSON.stringify(args)}`,
         `Cwd: ${root}`,
         `Status: ${String(result.status)}`,
         `Signal: ${String(result.signal)}`,
