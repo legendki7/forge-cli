@@ -68,9 +68,29 @@ async function createTemporaryDirectory(): Promise<string> {
 }
 
 function invokeNode(args: string[]) {
-  return spawnSync(process.execPath, [tsxCli, ...args], {
+  const processArgs = [tsxCli, ...args];
+  const result = spawnSync(process.execPath, processArgs, {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, FORCE_COLOR: '0' },
+    shell: false,
   });
+
+  if (result.status !== 0) {
+    throw new Error(
+      [
+        'CLI subprocess failed.',
+        `Executable: ${process.execPath}`,
+        `Arguments: ${JSON.stringify(processArgs)}`,
+        `Cwd: ${root}`,
+        `Status: ${String(result.status)}`,
+        `Signal: ${String(result.signal)}`,
+        `Spawn error: ${result.error ? `${result.error.name}: ${result.error.message}` : '<none>'}`,
+        `Stdout:\n${result.stdout || '<empty>'}`,
+        `Stderr:\n${result.stderr || '<empty>'}`,
+      ].join('\n'),
+    );
+  }
+
+  return result;
 }
