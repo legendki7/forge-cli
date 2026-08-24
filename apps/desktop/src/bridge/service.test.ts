@@ -12,6 +12,7 @@ import {
 } from './service';
 
 const temporaryDirectories: string[] = [];
+const absoluteTestDirectory = path.join(tmpdir(), 'forgeki-projects');
 
 afterEach(async () => {
   await Promise.all(
@@ -35,9 +36,9 @@ function request(destinationDirectory: string) {
 
 describe('desktop worker security boundary', () => {
   it('rejects invalid IPC payloads and arbitrary command fields', () => {
-    expect(() => validateRequest({ ...request('C:\\projects'), executable: 'powershell' })).toThrow(
-      'Invalid desktop bridge payload',
-    );
+    expect(() =>
+      validateRequest({ ...request(absoluteTestDirectory), executable: 'powershell' }),
+    ).toThrow('Invalid desktop bridge payload');
     expect(() =>
       validateRequest({ ...request('relative'), shellArguments: ['rm', '-rf'] }),
     ).toThrow();
@@ -139,7 +140,7 @@ describe('desktop worker security boundary', () => {
         operationId: 'unsafe-plugin',
         operation: 'apply-plugin',
         request: {
-          projectDirectory: 'C:\\projects',
+          projectDirectory: absoluteTestDirectory,
           pluginId: 'remote-package',
           executable: 'cmd',
         },
@@ -190,7 +191,7 @@ describe('desktop worker security boundary', () => {
   it('rejects unknown component IDs and forged generation plans', () => {
     expect(() =>
       validateRequest({
-        ...request('C:\\projects'),
+        ...request(absoluteTestDirectory),
         stack: {
           framework: 'nextjs',
           components: ['remote-package'],
